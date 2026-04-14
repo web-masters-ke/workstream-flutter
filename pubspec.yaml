@@ -1,0 +1,32 @@
+name: workstream
+description: "WorkStream agent mobile app — task execution, chat, wallet, and payouts for remote agents."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+  provider: ^6.1.2
+  cached_network_image: ^3.4.1
+  dio: ^5.7.0
+  shared_preferences: ^2.3.2
+  intl: ^0.20.1
+  fl_chart: ^0.69.0
+  image_picker: ^1.1.2
+  socket_io_client: ^2.0.3+1
+  connectivity_plus: ^6.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
