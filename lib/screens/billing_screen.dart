@@ -292,16 +292,21 @@ class _BillingScreenState extends State<BillingScreen> {
           ),
         ],
       ),
-      body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(
-                  color: AppColors.primary, strokeWidth: 2.5),
-            )
-          : RefreshIndicator(
+      body: RefreshIndicator(
               onRefresh: _load,
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
                 children: [
+                  // ── Loading indicator ──
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: LinearProgressIndicator(
+                        color: AppColors.primary,
+                        minHeight: 2,
+                      ),
+                    ),
+
                   // ── Error banner ──
                   if (_error != null)
                     Container(
