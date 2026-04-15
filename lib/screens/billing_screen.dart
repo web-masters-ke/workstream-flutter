@@ -292,7 +292,8 @@ class _BillingScreenState extends State<BillingScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
+      body: SafeArea(
+        child: RefreshIndicator(
               onRefresh: _load,
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
@@ -320,22 +321,20 @@ class _BillingScreenState extends State<BillingScreen> {
                       child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
                     ),
 
-                  // ── Balance cards row ──
+                  // ── Balance cards ──
+                  _BalanceCard(
+                    label: 'Total balance',
+                    value: '${_wallet.currency} ${_wallet.total.toStringAsFixed(0)}',
+                    icon: Icons.account_balance_wallet_rounded,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       Expanded(
                         child: _BalanceCard(
-                          label: 'Total balance',
-                          value: money.format(_wallet.total),
-                          icon: Icons.account_balance_wallet_rounded,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _BalanceCard(
                           label: 'Reserved',
-                          value: money.format(_wallet.reserved),
+                          value: '${_wallet.currency} ${_wallet.reserved.toStringAsFixed(0)}',
                           icon: Icons.lock_rounded,
                           color: AppColors.warn,
                         ),
@@ -344,7 +343,7 @@ class _BillingScreenState extends State<BillingScreen> {
                       Expanded(
                         child: _BalanceCard(
                           label: 'Available',
-                          value: money.format(_wallet.available),
+                          value: '${_wallet.currency} ${_wallet.available.toStringAsFixed(0)}',
                           icon: Icons.check_circle_rounded,
                           color: AppColors.success,
                         ),
@@ -354,8 +353,59 @@ class _BillingScreenState extends State<BillingScreen> {
 
                   const SizedBox(height: 24),
 
+                  // ── Subscription plans ──
+                  Text('Subscription plans', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 10),
+                  ...List.generate(_plans.length, (i) {
+                    final plan = _plans[i];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: t.cardColor,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: plan.isCurrent ? AppColors.primary : t.dividerColor,
+                          width: plan.isCurrent ? 2 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(plan.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                                    if (plan.isCurrent) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(999),
+                                        ),
+                                        child: const Text('Current', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(plan.features.join(' · '), style: TextStyle(fontSize: 11, color: subtext), maxLines: 2),
+                              ],
+                            ),
+                          ),
+                          Text('KES ${plan.price.toStringAsFixed(0)}', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary, fontSize: 15)),
+                        ],
+                      ),
+                    );
+                  }),
+
+                  const SizedBox(height: 24),
+
                   // ── Transaction history ──
-                  const SectionHeader(title: 'Transaction history'),
+                  Text('Transactions', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
@@ -479,6 +529,7 @@ class _BillingScreenState extends State<BillingScreen> {
                 ],
               ),
             ),
+      ),
     );
   }
 
