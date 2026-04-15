@@ -147,9 +147,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 onTap: () => _push(context, const AgentsManageScreen())),
               _KpiCard(label: 'Active Tasks', value: '$activeTasks', icon: Icons.assignment_rounded, color: AppColors.warn,
                 onTap: () => _push(context, const AdminTasksScreen())),
-              _KpiCard(label: 'Total Revenue', value: _money(gmv), icon: Icons.trending_up_rounded, color: AppColors.success,
+              _KpiCard(label: 'Revenue (30d)', value: _money(gmv), icon: Icons.trending_up_rounded, color: AppColors.success,
                 onTap: () => _push(context, const ReportsScreen())),
-              _KpiCard(label: 'Earnings (30d)', value: _money(revenue), icon: Icons.payments_rounded, color: AppColors.primary,
+              _KpiCard(label: 'Payouts (30d)', value: _money(revenue), icon: Icons.payments_rounded, color: AppColors.primary,
                 onTap: () => _push(context, const BillingScreen())),
               _KpiCard(label: 'Open Disputes', value: '$openDisputes', icon: Icons.gavel_rounded, color: AppColors.danger,
                 onTap: () => _push(context, const DisputesListScreen())),
@@ -185,7 +185,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Expanded(child: GestureDetector(
                 onTap: () => _push(context, const ReportsScreen()),
-                child: const _ActionChip(icon: Icons.bar_chart_rounded, label: 'Revenue', count: 0, color: AppColors.primary),
+                child: const _ActionChip(icon: Icons.bar_chart_rounded, label: 'Reports', count: 0, color: AppColors.primary),
               )),
               const SizedBox(width: 8),
               Expanded(child: GestureDetector(

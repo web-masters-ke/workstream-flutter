@@ -506,7 +506,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     const SectionHeader(title: 'Job completion'),
                     const SizedBox(height: 12),
                     _buildJobs(t, subtext),
+                    const SizedBox(height: 24),
                   ],
+
+                  // ── Revenue & Payouts ──
+                  const SectionHeader(title: 'Revenue & Payouts'),
+                  const SizedBox(height: 12),
+                  _buildRevenueSection(t, subtext),
                 ],
               ),
             ),
@@ -871,6 +877,161 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildRevenueSection(ThemeData t, Color subtext) {
+    // Try to get wallet/transaction data for revenue summary
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _loadRevenue(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+        final data = snap.data ?? {};
+        final balance = _toDouble(data['balance']);
+        final totalTopups = _toDouble(data['totalTopups']);
+        final totalPayouts = _toDouble(data['totalPayouts']);
+        final totalEarnings = _toDouble(data['totalEarnings']);
+        final txCount = (data['txCount'] as int?) ?? 0;
+
+        return Column(
+          children: [
+            // Revenue cards
+            Row(
+              children: [
+                Expanded(
+                  child: _revCard(t, 'Wallet Balance', 'KES ${balance.toStringAsFixed(0)}',
+                      Icons.account_balance_wallet_rounded, AppColors.primary),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _revCard(t, 'Total Top-ups', 'KES ${totalTopups.toStringAsFixed(0)}',
+                      Icons.arrow_downward_rounded, AppColors.success),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _revCard(t, 'Total Payouts', 'KES ${totalPayouts.toStringAsFixed(0)}',
+                      Icons.arrow_upward_rounded, AppColors.danger),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _revCard(t, 'Agent Earnings', 'KES ${totalEarnings.toStringAsFixed(0)}',
+                      Icons.people_rounded, AppColors.warn),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: t.cardColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: t.dividerColor),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.receipt_long_rounded, color: subtext, size: 20),
+                  const SizedBox(width: 10),
+                  Text('$txCount transactions in this period',
+                      style: TextStyle(color: subtext, fontSize: 13)),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> _loadRevenue() async {
+    try {
+      final resp = await ApiService.instance.get('/wallet');
+      final wallet = unwrap<Map<String, dynamic>>(resp);
+      final balance = _toDouble(wallet['balance']);
+
+      double totalTopups = 0;
+      double totalPayouts = 0;
+      double totalEarnings = 0;
+      int txCount = 0;
+
+      try {
+        final txResp = await ApiService.instance.get('/wallet/transactions');
+        final txData = unwrap<dynamic>(txResp);
+        final List<dynamic> txList;
+        if (txData is List) {
+          txList = txData;
+        } else if (txData is Map && txData['items'] is List) {
+          txList = txData['items'] as List;
+        } else {
+          txList = [];
+        }
+        txCount = txList.length;
+        for (final tx in txList) {
+          if (tx is! Map) continue;
+          final type = tx['type']?.toString().toUpperCase() ?? '';
+          final amt = _toDouble(tx['amount'] ?? tx['amountCents']);
+          if (type == 'TOPUP') totalTopups += amt;
+          if (type == 'PAYOUT') totalPayouts += amt;
+          if (type == 'EARNING') totalEarnings += amt;
+        }
+      } catch (_) {}
+
+      return {
+        'balance': balance,
+        'totalTopups': totalTopups,
+        'totalPayouts': totalPayouts,
+        'totalEarnings': totalEarnings,
+        'txCount': txCount,
+      };
+    } catch (_) {
+      return {};
+    }
+  }
+
+  static double _toDouble(dynamic v) {
+    if (v == null) return 0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0;
+  }
+
+  Widget _revCard(ThemeData t, String label, String value, IconData icon, Color color) {
+    final subtext = t.brightness == Brightness.dark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: t.cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: t.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: color)),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(color: subtext, fontSize: 11)),
+        ],
+      ),
     );
   }
 }
