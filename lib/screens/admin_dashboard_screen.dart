@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import 'admin_tasks_screen.dart';
 import 'admin_team_screen.dart';
 import 'agents_manage_screen.dart';
+import 'billing_screen.dart';
 import 'disputes_list_screen.dart';
 import 'reports_screen.dart';
 
@@ -177,6 +178,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 onTap: () => _push(context, const AdminTasksScreen()),
                 child: _ActionChip(icon: Icons.task_alt_rounded, label: 'Completed', count: completedTasks, color: AppColors.success),
               )),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: GestureDetector(
+                onTap: () => _push(context, const ReportsScreen()),
+                child: const _ActionChip(icon: Icons.bar_chart_rounded, label: 'Revenue', count: 0, color: AppColors.primary),
+              )),
+              const SizedBox(width: 8),
+              Expanded(child: GestureDetector(
+                onTap: () => _push(context, const BillingScreen()),
+                child: const _ActionChip(icon: Icons.credit_card_rounded, label: 'Billing', count: 0, color: AppColors.primarySoft),
+              )),
+              const SizedBox(width: 8),
+              const Expanded(child: SizedBox()),
             ],
           ),
           const SizedBox(height: 24),
