@@ -6,8 +6,12 @@ import 'controllers/auth_controller.dart';
 import 'controllers/notifications_controller.dart';
 import 'controllers/tasks_controller.dart';
 import 'controllers/wallet_controller.dart';
+import 'screens/login_screen.dart';
 import 'screens/splash_screen.dart';
+import 'services/api_service.dart';
 import 'theme/app_theme.dart';
+
+final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,9 +38,17 @@ class WorkstreamApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<ThemeController>();
+    // Register the auth-expired callback once the widget is wired up
+    ApiService.instance.onAuthExpired = () {
+      navigatorKey.currentState?.pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+        (_) => false,
+      );
+    };
     return MaterialApp(
       title: 'WorkStream',
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
       themeMode: controller.mode,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

@@ -19,28 +19,37 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthController>().user;
+    final auth = context.watch<AuthController>();
+    final user = auth.user;
+    final themeCtrl = context.watch<ThemeController>();
     final t = Theme.of(context);
-    final subtext = t.brightness == Brightness.dark
-        ? AppColors.darkSubtext
-        : AppColors.lightSubtext;
+    final isDark = t.brightness == Brightness.dark;
+    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                  builder: (_) => const EditProfileScreen()),
-            ),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+    final initials = user?.initials.isNotEmpty == true ? user!.initials : 'WS';
+    final name = user?.fullName.isNotEmpty == true ? user!.fullName : 'User';
+    final email = user?.email ?? '';
+    final phone = user?.phone ?? '';
+    final role = user?.role ?? '';
+
+    return ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
         children: [
+          // ── Header row ───────────────────────────────────
+          Row(
+            children: [
+              Text('Profile', style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const EditProfileScreen()),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // ── Avatar + name ────────────────────────────────────
           Center(
             child: Column(
               children: [
@@ -58,7 +67,7 @@ class ProfileScreen extends StatelessWidget {
                         backgroundColor:
                             AppColors.primary.withValues(alpha: 0.18),
                         child: Text(
-                          user?.initials ?? 'DA',
+                          initials,
                           style: const TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w800,
@@ -85,38 +94,59 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  user?.fullName.isNotEmpty == true
-                      ? user!.fullName
-                      : 'Agent',
+                  name,
                   style: t.textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 2),
-                Text(user?.email ?? '', style: TextStyle(color: subtext)),
-                const SizedBox(height: 6),
-                if (user?.kycVerified ?? false)
-                  const StatusPill(
-                    label: 'KYC verified',
-                    color: AppColors.success,
-                    icon: Icons.verified_rounded,
-                  )
-                else
-                  const StatusPill(
-                    label: 'KYC pending',
-                    color: AppColors.warn,
-                    icon: Icons.pending_actions_rounded,
+                if (email.isNotEmpty)
+                  Text(email, style: TextStyle(color: subtext)),
+                if (phone.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(phone, style: TextStyle(color: subtext, fontSize: 13)),
                   ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (role.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: StatusPill(
+                          label: role,
+                          color: AppColors.primary,
+                          icon: Icons.badge_rounded,
+                        ),
+                      ),
+                    if (user?.kycVerified ?? false)
+                      const StatusPill(
+                        label: 'KYC verified',
+                        color: AppColors.success,
+                        icon: Icons.verified_rounded,
+                      )
+                    else
+                      const StatusPill(
+                        label: 'KYC pending',
+                        color: AppColors.warn,
+                        icon: Icons.pending_actions_rounded,
+                      ),
+                  ],
+                ),
               ],
             ),
           ),
+
           const SizedBox(height: 22),
+
+          // ── Stats ────────────────────────────────────────────
           Row(
             children: [
               Expanded(
                 child: StatTile(
                   icon: Icons.star_rounded,
                   label: 'Rating',
-                  value: (user?.rating ?? 4.72).toStringAsFixed(2),
+                  value: (user?.rating ?? 0).toStringAsFixed(2),
                   color: AppColors.warn,
                 ),
               ),
@@ -140,7 +170,10 @@ class ProfileScreen extends StatelessWidget {
               ),
             ],
           ),
+
           const SizedBox(height: 22),
+
+          // ── Skills ───────────────────────────────────────────
           Row(
             children: [
               const SectionHeader(title: 'Skills'),
@@ -158,12 +191,12 @@ class ProfileScreen extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: (user?.skills ?? ['Customer Support', 'Data Entry'])
-                .map((s) => _SkillChip(s))
-                .toList(),
+            children: (user?.skills ?? []).isEmpty
+                ? [_SkillChip('No skills added yet')]
+                : (user?.skills ?? []).map((s) => _SkillChip(s)).toList(),
           ),
 
-          // -- documents status
+          // ── KYC prompt ───────────────────────────────────────
           if (!(user?.kycVerified ?? false)) ...[
             const SizedBox(height: 18),
             InkWell(
@@ -200,6 +233,37 @@ class ProfileScreen extends StatelessWidget {
           ],
 
           const SizedBox(height: 22),
+
+          // ── Dark mode toggle ─────────────────────────────────
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: t.dividerColor),
+              color: t.cardColor,
+            ),
+            child: SwitchListTile(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              title: const Text('Dark mode',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text(
+                isDark ? 'On' : 'Off',
+                style: TextStyle(color: subtext, fontSize: 12),
+              ),
+              secondary: Icon(
+                isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                color: AppColors.primary,
+              ),
+              value: themeCtrl.isDark,
+              activeThumbColor: AppColors.primary,
+              onChanged: (_) => themeCtrl.toggle(),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // ── Menu items ───────────────────────────────────────
           _MenuTile(
             icon: Icons.insights_rounded,
             label: 'Performance',
@@ -240,12 +304,35 @@ class ProfileScreen extends StatelessWidget {
                   builder: (_) => const HelpScreen()),
             ),
           ),
+
           const SizedBox(height: 10),
+
+          // ── Sign out ─────────────────────────────────────────
           _MenuTile(
             icon: Icons.logout_rounded,
             label: 'Sign out',
             danger: true,
             onTap: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Sign out'),
+                  content: const Text('Are you sure you want to sign out?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Sign out',
+                          style: TextStyle(color: AppColors.danger)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed != true) return;
+              if (!context.mounted) return;
               await context.read<AuthController>().logout();
               if (!context.mounted) return;
               Navigator.of(context).pushAndRemoveUntil(
@@ -256,7 +343,6 @@ class ProfileScreen extends StatelessWidget {
             },
           ),
         ],
-      ),
     );
   }
 }

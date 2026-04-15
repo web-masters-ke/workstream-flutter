@@ -529,6 +529,7 @@ class _BidTile extends StatelessWidget {
                       onPressed: () => showModalBottomSheet(
                         context: context,
                         isScrollControlled: true,
+                        useSafeArea: true,
                         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
                         builder: (_) => _RejectBidSheet(
                           bid: bid,
@@ -684,6 +685,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => _BidFormSheet(
         listing: _listing!,

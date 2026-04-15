@@ -41,7 +41,7 @@ class _MyBidsScreenState extends State<MyBidsScreen>
       final bids = await _service.myBids();
       if (mounted) setState(() { _bids = bids; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString().replaceFirst('Exception: ', ''); _loading = false; });
+      if (mounted) setState(() { _error = e.toString().replaceFirst(RegExp(r'^[A-Za-z]+Exception\([^)]*\):\s*'), ''); _loading = false; });
     }
   }
 
@@ -384,7 +384,7 @@ class _BidCard extends StatelessWidget {
                         } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: AppColors.danger),
+                              SnackBar(content: Text(e.toString().replaceFirst(RegExp(r'^[A-Za-z]+Exception\([^)]*\):\s*'), '')), backgroundColor: AppColors.danger),
                             );
                           }
                         }

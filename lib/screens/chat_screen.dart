@@ -30,6 +30,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _sending = false;
   String? _error;
   File? _pendingImage;
+  bool _showEmojiPicker = false;
 
   late String _currentUserId;
 
@@ -90,6 +91,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       _sending = true;
       _pendingImage = null;
+      _showEmojiPicker = false;
     });
     _input.clear();
 
@@ -207,6 +209,18 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _insertEmoji(String emoji) {
+    final text = _input.text;
+    final sel = _input.selection;
+    final start = sel.baseOffset >= 0 ? sel.baseOffset : text.length;
+    final end = sel.extentOffset >= 0 ? sel.extentOffset : text.length;
+    final newText = text.replaceRange(start, end, emoji);
+    _input.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: start + emoji.length),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
@@ -255,60 +269,67 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           // ── Message list ───────────────────────────────────
           Expanded(
-            child: _loading
-                ? const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2.5))
-                : _error != null
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.error_outline_rounded,
-                                color: AppColors.danger, size: 40),
-                            const SizedBox(height: 12),
-                            Text(_error!,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    color: AppColors.danger)),
-                            const SizedBox(height: 12),
-                            TextButton(
-                                onPressed: _loadMessages,
-                                child: const Text('Retry')),
-                          ],
-                        ),
-                      )
-                    : _messages.isEmpty
-                        ? Center(
-                            child: Text(
-                              'No messages yet. Say hi!',
-                              style: TextStyle(
-                                color: t.brightness == Brightness.dark
-                                    ? AppColors.darkSubtext
-                                    : AppColors.lightSubtext,
-                              ),
-                            ),
-                          )
-                        : ListView.builder(
-                            controller: _scroll,
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _messages.length,
-                            itemBuilder: (_, i) {
-                              final msg = _messages[i];
-                              final showDate = i == 0 ||
-                                  !_sameDay(_messages[i].createdAt,
-                                      _messages[i - 1].createdAt);
-                              return Column(
-                                children: [
-                                  if (showDate)
-                                    _dateSeparator(msg.createdAt, t),
-                                  _Bubble(
-                                    msg: msg,
-                                    onMeetingTap: _joinMeeting,
-                                  ),
-                                ],
-                              );
-                            },
+            child: GestureDetector(
+              onTap: () {
+                if (_showEmojiPicker) {
+                  setState(() => _showEmojiPicker = false);
+                }
+              },
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2.5))
+                  : _error != null
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.error_outline_rounded,
+                                  color: AppColors.danger, size: 40),
+                              const SizedBox(height: 12),
+                              Text(_error!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      color: AppColors.danger)),
+                              const SizedBox(height: 12),
+                              TextButton(
+                                  onPressed: _loadMessages,
+                                  child: const Text('Retry')),
+                            ],
                           ),
+                        )
+                      : _messages.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No messages yet. Say hi!',
+                                style: TextStyle(
+                                  color: t.brightness == Brightness.dark
+                                      ? AppColors.darkSubtext
+                                      : AppColors.lightSubtext,
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              controller: _scroll,
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _messages.length,
+                              itemBuilder: (_, i) {
+                                final msg = _messages[i];
+                                final showDate = i == 0 ||
+                                    !_sameDay(_messages[i].createdAt,
+                                        _messages[i - 1].createdAt);
+                                return Column(
+                                  children: [
+                                    if (showDate)
+                                      _dateSeparator(msg.createdAt, t),
+                                    _Bubble(
+                                      msg: msg,
+                                      onMeetingTap: _joinMeeting,
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+            ),
           ),
 
           // ── Pending image preview ──────────────────────────
@@ -365,6 +386,18 @@ class _ChatScreenState extends State<ChatScreen> {
                     onPressed: _pickImage,
                     tooltip: 'Attach image',
                   ),
+                  IconButton(
+                    icon: Icon(
+                      _showEmojiPicker
+                          ? Icons.keyboard_rounded
+                          : Icons.emoji_emotions_outlined,
+                    ),
+                    onPressed: () {
+                      setState(
+                          () => _showEmojiPicker = !_showEmojiPicker);
+                    },
+                    tooltip: _showEmojiPicker ? 'Keyboard' : 'Emoji',
+                  ),
                   Expanded(
                     child: TextField(
                       controller: _input,
@@ -372,6 +405,11 @@ class _ChatScreenState extends State<ChatScreen> {
                       maxLines: 4,
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _send(),
+                      onTap: () {
+                        if (_showEmojiPicker) {
+                          setState(() => _showEmojiPicker = false);
+                        }
+                      },
                       decoration: InputDecoration(
                         hintText: 'Message...',
                         contentPadding: const EdgeInsets.symmetric(
@@ -420,6 +458,10 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           ),
+
+          // ── Emoji picker ───────────────────────────────────
+          if (_showEmojiPicker)
+            _EmojiGrid(onEmojiSelected: _insertEmoji),
         ],
       ),
     );
@@ -465,6 +507,59 @@ class _ChatScreenState extends State<ChatScreen> {
 
   bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+// ─── Emoji Picker Grid ──────────────────────────────────────────────────────
+
+const _commonEmojis = [
+  // Smileys
+  '\u{1F600}', '\u{1F602}', '\u{1F605}', '\u{1F60A}', '\u{1F60D}',
+  '\u{1F60E}', '\u{1F609}', '\u{1F617}', '\u{1F618}', '\u{1F61C}',
+  '\u{1F914}', '\u{1F60F}', '\u{1F612}', '\u{1F644}', '\u{1F62D}',
+  '\u{1F621}', '\u{1F92F}', '\u{1F631}', '\u{1F622}', '\u{1F62E}',
+  // Gestures
+  '\u{1F44D}', '\u{1F44E}', '\u{1F44F}', '\u{1F64F}', '\u{1F4AA}',
+  '\u{270C}\u{FE0F}', '\u{1F44B}', '\u{1F91D}', '\u{1F446}', '\u{1F447}',
+  // Objects & symbols
+  '\u{2764}\u{FE0F}', '\u{1F525}', '\u{1F389}', '\u{1F38A}', '\u{2705}',
+  '\u{274C}', '\u{2B50}', '\u{1F4A1}', '\u{1F4AC}', '\u{1F4E2}',
+  '\u{1F4C8}', '\u{1F680}', '\u{1F3AF}', '\u{1F4DD}', '\u{1F4BC}',
+  '\u{2708}\u{FE0F}', '\u{1F4B0}', '\u{1F4F1}', '\u{2615}', '\u{1F37A}',
+];
+
+class _EmojiGrid extends StatelessWidget {
+  final void Function(String emoji) onEmojiSelected;
+  const _EmojiGrid({required this.onEmojiSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Container(
+      height: 220,
+      decoration: BoxDecoration(
+        color: t.cardColor,
+        border: Border(top: BorderSide(color: t.dividerColor)),
+      ),
+      child: GridView.builder(
+        padding: const EdgeInsets.all(12),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 8,
+          mainAxisSpacing: 6,
+          crossAxisSpacing: 6,
+        ),
+        itemCount: _commonEmojis.length,
+        itemBuilder: (_, i) {
+          final emoji = _commonEmojis[i];
+          return GestureDetector(
+            onTap: () => onEmojiSelected(emoji),
+            child: Center(
+              child: Text(emoji, style: const TextStyle(fontSize: 24)),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
 // ─── Bubble ─────────────────────────────────────────────────────────────────
@@ -567,13 +662,13 @@ class _Bubble extends StatelessWidget {
                               color: AppColors.success
                                   .withValues(alpha: 0.4)),
                         ),
-                        child: Row(
+                        child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.video_call_rounded,
+                            Icon(Icons.video_call_rounded,
                                 color: AppColors.success, size: 18),
-                            const SizedBox(width: 6),
-                            const Text(
+                            SizedBox(width: 6),
+                            Text(
                               'Join call',
                               style: TextStyle(
                                 color: AppColors.success,

@@ -34,9 +34,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         title: const Text('Notifications'),
         actions: [
           if (ctrl.unread > 0)
-            TextButton(
-              onPressed: () => ctrl.markAll(),
-              child: const Text('Mark all read'),
+            IconButton(
+              icon: const Icon(Icons.done_all_rounded),
+              tooltip: 'Mark all read',
+              onPressed: () async {
+                await ctrl.markAll();
+                if (!context.mounted) return;
+                await ctrl.load();
+              },
             ),
         ],
       ),

@@ -1,9 +1,491 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
+import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/primitives.dart';
 
-class BillingScreen extends StatelessWidget {
+// ─── Models ─────────────────────────────────────────────────────────────────
+
+class _BillingWallet {
+  final double total;
+  final double reserved;
+  final double available;
+  final String currency;
+
+  const _BillingWallet({
+    required this.total,
+    required this.reserved,
+    required this.available,
+    this.currency = 'KES',
+  });
+
+  factory _BillingWallet.fromJson(Map<String, dynamic> j) {
+    return _BillingWallet(
+      total: _d(j['total'] ?? j['balance']),
+      reserved: _d(j['reserved'] ?? j['pending']),
+      available: _d(j['available'] ?? j['balance']),
+      currency: j['currency']?.toString() ?? 'KES',
+    );
+  }
+
+  factory _BillingWallet.empty() =>
+      const _BillingWallet(total: 0, reserved: 0, available: 0);
+
+  static double _d(dynamic v) {
+    if (v == null) return 0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0;
+  }
+}
+
+class _BillingTx {
+  final String id;
+  final String type; // TOPUP, DEBIT, PAYOUT, EARNING, etc.
+  final String status; // COMPLETED, PENDING, FAILED
+  final double amount;
+  final String currency;
+  final String? description;
+  final String? reference;
+  final DateTime createdAt;
+
+  _BillingTx({
+    required this.id,
+    required this.type,
+    required this.status,
+    required this.amount,
+    this.currency = 'KES',
+    this.description,
+    this.reference,
+    required this.createdAt,
+  });
+
+  bool get isCredit =>
+      type.toUpperCase() == 'TOPUP' ||
+      type.toUpperCase() == 'EARNING' ||
+      type.toUpperCase() == 'BONUS' ||
+      type.toUpperCase() == 'REFUND';
+
+  factory _BillingTx.fromJson(Map<String, dynamic> j) => _BillingTx(
+        id: j['id']?.toString() ?? '',
+        type: j['type']?.toString() ?? 'DEBIT',
+        status: j['status']?.toString() ?? 'PENDING',
+        amount: _d(j['amount']),
+        currency: j['currency']?.toString() ?? 'KES',
+        description: j['description']?.toString() ?? j['note']?.toString(),
+        reference: j['reference']?.toString(),
+        createdAt: DateTime.tryParse(j['createdAt']?.toString() ?? '') ??
+            DateTime.now(),
+      );
+
+  static double _d(dynamic v) {
+    if (v == null) return 0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0;
+  }
+}
+
+class _Plan {
+  final String id;
+  final String name;
+  final double price;
+  final List<String> features;
+  final bool isCurrent;
+
+  const _Plan({
+    required this.id,
+    required this.name,
+    required this.price,
+    required this.features,
+    this.isCurrent = false,
+  });
+}
+
+// ─── Screen ─────────────────────────────────────────────────────────────────
+
+class BillingScreen extends StatefulWidget {
   const BillingScreen({super.key});
+
+  @override
+  State<BillingScreen> createState() => _BillingScreenState();
+}
+
+class _BillingScreenState extends State<BillingScreen> {
+  _BillingWallet _wallet = _BillingWallet.empty();
+  List<_BillingTx> _transactions = [];
+  bool _loading = true;
+  String _txFilter = 'all';
+  bool _autoRecharge = false;
+  final _autoThresholdCtrl = TextEditingController(text: '500');
+  final _autoAmountCtrl = TextEditingController(text: '2000');
+
+  // Hardcoded plans
+  final List<_Plan> _plans = const [
+    _Plan(
+      id: 'free',
+      name: 'Free',
+      price: 0,
+      features: ['5 agents', 'Basic tasks', 'Community support'],
+    ),
+    _Plan(
+      id: 'starter',
+      name: 'Starter',
+      price: 2999,
+      features: ['20 agents', 'Task management', 'Email support'],
+      isCurrent: true,
+    ),
+    _Plan(
+      id: 'growth',
+      name: 'Growth',
+      price: 7999,
+      features: ['100 agents', 'Advanced analytics', 'Priority support'],
+    ),
+    _Plan(
+      id: 'enterprise',
+      name: 'Enterprise',
+      price: 24999,
+      features: [
+        'Unlimited agents',
+        'API access & webhooks',
+        'Dedicated manager'
+      ],
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _autoThresholdCtrl.dispose();
+    _autoAmountCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final walletResp = await ApiService.instance.get('/wallet');
+      final walletData = unwrap<dynamic>(walletResp);
+      if (walletData is Map<String, dynamic>) {
+        _wallet = _BillingWallet.fromJson(walletData);
+      }
+    } catch (_) {
+      // keep empty wallet
+    }
+
+    try {
+      final txResp =
+          await ApiService.instance.get('/wallet/transactions');
+      final txData = unwrap<dynamic>(txResp);
+      List<dynamic> list;
+      if (txData is List) {
+        list = txData;
+      } else if (txData is Map && txData['items'] is List) {
+        list = txData['items'] as List;
+      } else {
+        list = [];
+      }
+      _transactions = list
+          .whereType<Map<String, dynamic>>()
+          .map(_BillingTx.fromJson)
+          .toList();
+    } catch (_) {
+      _transactions = [];
+    }
+
+    if (mounted) setState(() => _loading = false);
+  }
+
+  List<_BillingTx> get _filtered {
+    switch (_txFilter) {
+      case 'topups':
+        return _transactions
+            .where((t) => t.type.toUpperCase() == 'TOPUP')
+            .toList();
+      case 'debits':
+        return _transactions.where((t) => !t.isCredit).toList();
+      case 'payouts':
+        return _transactions
+            .where((t) => t.type.toUpperCase() == 'PAYOUT')
+            .toList();
+      default:
+        return _transactions;
+    }
+  }
+
+  void _showTopUpSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _TopUpSheet(
+        currency: _wallet.currency,
+        onComplete: _load,
+      ),
+    );
+  }
+
+  Future<void> _saveAutoRecharge() async {
+    try {
+      await ApiService.instance.patch('/wallet/auto-recharge', body: {
+        'enabled': _autoRecharge,
+        'threshold': double.tryParse(_autoThresholdCtrl.text) ?? 500,
+        'amount': double.tryParse(_autoAmountCtrl.text) ?? 2000,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Auto-recharge settings saved')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: ${cleanError(e)}')),
+        );
+      }
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'COMPLETED':
+      case 'SUCCESS':
+        return AppColors.success;
+      case 'FAILED':
+        return AppColors.danger;
+      default:
+        return AppColors.warn;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final isDark = t.brightness == Brightness.dark;
+    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final money = NumberFormat.currency(
+      symbol: '${_wallet.currency} ',
+      decimalDigits: 0,
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Billing & Subscriptions'),
+        actions: [
+          TextButton.icon(
+            onPressed: _showTopUpSheet,
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text('Top up'),
+            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          ),
+        ],
+      ),
+      body: _loading
+          ? const Center(
+              child: CircularProgressIndicator(
+                  color: AppColors.primary, strokeWidth: 2.5),
+            )
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                children: [
+                  // ── Balance cards row ──
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _BalanceCard(
+                          label: 'Total balance',
+                          value: money.format(_wallet.total),
+                          icon: Icons.account_balance_wallet_rounded,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _BalanceCard(
+                          label: 'Reserved',
+                          value: money.format(_wallet.reserved),
+                          icon: Icons.lock_rounded,
+                          color: AppColors.warn,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _BalanceCard(
+                          label: 'Available',
+                          value: money.format(_wallet.available),
+                          icon: Icons.check_circle_rounded,
+                          color: AppColors.success,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── Transaction history ──
+                  const SectionHeader(title: 'Transaction history'),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      _chip('All', 'all'),
+                      _chip('Top-ups', 'topups'),
+                      _chip('Debits', 'debits'),
+                      _chip('Payouts', 'payouts'),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (_filtered.isEmpty)
+                    const EmptyState(
+                      icon: Icons.receipt_long_outlined,
+                      title: 'No transactions yet',
+                      message: 'Your transaction history will appear here.',
+                    )
+                  else
+                    ..._filtered.map((tx) => _TxRow(
+                          tx: tx,
+                          money: money,
+                          subtext: subtext,
+                          statusColor: _statusColor(tx.status),
+                        )),
+
+                  const SizedBox(height: 28),
+
+                  // ── Subscription plans ──
+                  const SectionHeader(title: 'Subscription plans'),
+                  const SizedBox(height: 12),
+                  ..._plans.map((plan) => _PlanCard(
+                        plan: plan,
+                        money: money,
+                        subtext: subtext,
+                      )),
+
+                  const SizedBox(height: 28),
+
+                  // ── Auto-recharge settings ──
+                  const SectionHeader(title: 'Auto-recharge'),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: t.cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: t.dividerColor),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Enable auto-recharge',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Automatically top up when balance is low',
+                                    style: TextStyle(
+                                        color: subtext, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              value: _autoRecharge,
+                              activeTrackColor:
+                                  AppColors.primary.withValues(alpha: 0.5),
+                              activeThumbColor: AppColors.primary,
+                              onChanged: (v) =>
+                                  setState(() => _autoRecharge = v),
+                            ),
+                          ],
+                        ),
+                        if (_autoRecharge) ...[
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: WsTextField(
+                                  controller: _autoThresholdCtrl,
+                                  label: 'When below',
+                                  hint: '500',
+                                  icon: Icons.trending_down_rounded,
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: WsTextField(
+                                  controller: _autoAmountCtrl,
+                                  label: 'Top up amount',
+                                  hint: '2000',
+                                  icon: Icons.payments_outlined,
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: _saveAutoRecharge,
+                              child: const Text('Save settings'),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _chip(String label, String value) {
+    final active = _txFilter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: active,
+      selectedColor: AppColors.primary.withValues(alpha: 0.18),
+      onSelected: (_) => setState(() => _txFilter = value),
+    );
+  }
+}
+
+// ─── Balance Card ───────────────────────────────────────────────────────────
+
+class _BalanceCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _BalanceCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -11,233 +493,621 @@ class BillingScreen extends StatelessWidget {
     final subtext = t.brightness == Brightness.dark
         ? AppColors.darkSubtext
         : AppColors.lightSubtext;
-    final isDark = t.brightness == Brightness.dark;
-    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
-    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Billing & Subscriptions')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: t.cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: t.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Current plan card
           Container(
-            padding: const EdgeInsets.all(20),
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primaryDeep, AppColors.primarySoft],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(8),
             ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(color: subtext, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Transaction Row ────────────────────────────────────────────────────────
+
+class _TxRow extends StatelessWidget {
+  final _BillingTx tx;
+  final NumberFormat money;
+  final Color subtext;
+  final Color statusColor;
+
+  const _TxRow({
+    required this.tx,
+    required this.money,
+    required this.subtext,
+    required this.statusColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final amtColor = tx.isCredit ? AppColors.success : AppColors.danger;
+    final sign = tx.isCredit ? '+' : '-';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: t.cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: t.dividerColor),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: amtColor.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              tx.isCredit
+                  ? Icons.arrow_downward_rounded
+                  : Icons.arrow_upward_rounded,
+              color: amtColor,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.4)),
-                      ),
-                      child: const Text(
-                        'CURRENT PLAN',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
+                    Text(
+                      DateFormat('MMM d, yyyy').format(tx.createdAt),
+                      style:
+                          const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                    ),
+                    const SizedBox(width: 6),
+                    StatusPill(
+                      label: tx.type,
+                      color: AppColors.primary,
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                const Text(
-                  'Starter',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
+                const SizedBox(height: 3),
+                if (tx.description != null)
+                  Text(
+                    tx.description!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: subtext, fontSize: 12),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Free',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 15,
+                if (tx.reference != null)
+                  Text(
+                    'Ref: ${tx.reference}',
+                    style: TextStyle(color: subtext, fontSize: 11),
                   ),
-                ),
-                const SizedBox(height: 16),
-                _planFeature(Icons.check_circle_rounded,
-                    'Unlimited marketplace listings'),
-                const SizedBox(height: 6),
-                _planFeature(
-                    Icons.check_circle_rounded, 'Up to 20 agents'),
-                const SizedBox(height: 6),
-                _planFeature(Icons.check_circle_rounded,
-                    'Task management & scheduling'),
-                const SizedBox(height: 6),
-                _planFeature(Icons.check_circle_rounded, 'Basic reports'),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Plan upgrades coming soon.'),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      'Upgrade plan',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 15),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
-
-          const SizedBox(height: 28),
-
-          // Pro plan comparison
-          Text(
-            'Pro plan includes',
-            style: t.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
-
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: borderColor),
-            ),
-            child: Column(
-              children: [
-                _proFeature(context, Icons.groups_rounded,
-                    'Unlimited agents', subtext),
-                _divider(borderColor),
-                _proFeature(context, Icons.bar_chart_rounded,
-                    'Advanced analytics & exports', subtext),
-                _divider(borderColor),
-                _proFeature(context, Icons.support_agent_rounded,
-                    'Priority support', subtext),
-                _divider(borderColor),
-                _proFeature(context, Icons.api_rounded,
-                    'API access & webhooks', subtext),
-                _divider(borderColor),
-                _proFeature(context, Icons.verified_rounded,
-                    'Custom branding', subtext),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 28),
-
-          // Billing history section
-          Text(
-            'Billing history',
-            style: t.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
-
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: borderColor),
-            ),
-            child: Column(
-              children: [
-                Icon(Icons.receipt_long_outlined,
-                    size: 40, color: borderColor),
-                const SizedBox(height: 10),
-                Text(
-                  'No invoices yet',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600, color: subtext),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Your billing history will appear here once you upgrade.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: subtext, fontSize: 13),
-                ),
-              ],
-            ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$sign${money.format(tx.amount)}',
+                style: TextStyle(
+                    color: amtColor, fontWeight: FontWeight.w800, fontSize: 14),
+              ),
+              const SizedBox(height: 3),
+              StatusPill(label: tx.status, color: statusColor),
+            ],
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _planFeature(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, color: AppColors.primary, size: 16),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 13,
+// ─── Plan Card ──────────────────────────────────────────────────────────────
+
+class _PlanCard extends StatelessWidget {
+  final _Plan plan;
+  final NumberFormat money;
+  final Color subtext;
+
+  const _PlanCard({
+    required this.plan,
+    required this.money,
+    required this.subtext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: t.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: plan.isCurrent
+              ? AppColors.primary.withValues(alpha: 0.6)
+              : t.dividerColor,
+          width: plan.isCurrent ? 2 : 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      plan.name,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 16),
+                    ),
+                    if (plan.isCurrent) ...[
+                      const SizedBox(width: 8),
+                      const StatusPill(
+                          label: 'Current', color: AppColors.primary),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  plan.price == 0
+                      ? 'Free'
+                      : '${money.format(plan.price)}/mo',
+                  style: TextStyle(
+                      color: subtext,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: plan.features
+                      .map((f) => Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.check_rounded,
+                                  size: 14, color: AppColors.success),
+                              const SizedBox(width: 4),
+                              Text(f,
+                                  style: TextStyle(
+                                      fontSize: 12, color: subtext)),
+                            ],
+                          ))
+                      .toList(),
+                ),
+              ],
             ),
           ),
+          if (!plan.isCurrent)
+            OutlinedButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Switching to ${plan.name} plan...'),
+                  ),
+                );
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              ),
+              child: const Text('Select',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Top Up Bottom Sheet (3-step flow) ──────────────────────────────────────
+
+enum _TopUpStep { form, awaiting, success }
+
+class _TopUpSheet extends StatefulWidget {
+  final String currency;
+  final VoidCallback onComplete;
+  const _TopUpSheet({required this.currency, required this.onComplete});
+
+  @override
+  State<_TopUpSheet> createState() => _TopUpSheetState();
+}
+
+class _TopUpSheetState extends State<_TopUpSheet> {
+  _TopUpStep _step = _TopUpStep.form;
+  String _method = 'mpesa'; // mpesa | card
+  final _amountCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController(text: '+254 ');
+  bool _busy = false;
+  Timer? _pollTimer;
+  String? _topUpRef;
+
+  static const _quickAmounts = [500, 1000, 2500, 5000, 10000];
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _phoneCtrl.dispose();
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final amount = double.tryParse(_amountCtrl.text);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid amount')),
+      );
+      return;
+    }
+    if (_method == 'mpesa' && _phoneCtrl.text.trim().length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid phone number')),
+      );
+      return;
+    }
+
+    setState(() => _busy = true);
+    try {
+      final resp = await ApiService.instance.post('/wallet/topup', body: {
+        'amount': amount,
+        'phone': _phoneCtrl.text.trim(),
+        'method': _method,
+      });
+      final data = unwrap<dynamic>(resp);
+      _topUpRef = (data is Map ? data['reference']?.toString() : null) ??
+          'TU${DateTime.now().millisecondsSinceEpoch}';
+      setState(() {
+        _step = _TopUpStep.awaiting;
+        _busy = false;
+      });
+      _startPolling();
+    } catch (e) {
+      setState(() => _busy = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: ${cleanError(e)}')),
+        );
+      }
+    }
+  }
+
+  void _startPolling() {
+    if (_topUpRef == null) return;
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      try {
+        final resp = await ApiService.instance
+            .get('/wallet/topup/$_topUpRef/status');
+        final data = unwrap<dynamic>(resp);
+        final status =
+            (data is Map ? data['status']?.toString() : null) ?? '';
+        if (status.toUpperCase() == 'COMPLETED' ||
+            status.toUpperCase() == 'SUCCESS') {
+          _pollTimer?.cancel();
+          if (mounted) {
+            setState(() => _step = _TopUpStep.success);
+          }
+        }
+      } catch (_) {
+        // keep polling
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final subtext = t.brightness == Brightness.dark
+        ? AppColors.darkSubtext
+        : AppColors.lightSubtext;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        16,
+        20,
+        MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.paddingOf(context).bottom +
+            24,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: t.dividerColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _step == _TopUpStep.success ? 'Payment received' : 'Top up wallet',
+              style: t.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 16),
+            if (_step == _TopUpStep.form) _buildForm(t, subtext),
+            if (_step == _TopUpStep.awaiting) _buildAwaiting(t, subtext),
+            if (_step == _TopUpStep.success) _buildSuccess(t),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForm(ThemeData t, Color subtext) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Payment method toggle
+        const Text('Payment method',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _method = 'mpesa'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _method == 'mpesa'
+                        ? AppColors.primary.withValues(alpha: 0.14)
+                        : t.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _method == 'mpesa'
+                          ? AppColors.primary
+                          : t.dividerColor,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(Icons.phone_android_rounded,
+                          color: _method == 'mpesa'
+                              ? AppColors.primary
+                              : subtext),
+                      const SizedBox(height: 4),
+                      Text(
+                        'M-Pesa',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: _method == 'mpesa'
+                              ? AppColors.primary
+                              : subtext,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _method = 'card'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _method == 'card'
+                        ? AppColors.primary.withValues(alpha: 0.14)
+                        : t.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _method == 'card'
+                          ? AppColors.primary
+                          : t.dividerColor,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(Icons.credit_card_rounded,
+                          color: _method == 'card'
+                              ? AppColors.primary
+                              : subtext),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Card',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: _method == 'card'
+                              ? AppColors.primary
+                              : subtext,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Quick amount buttons
+        const Text('Quick amount',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _quickAmounts.map((a) {
+            return GestureDetector(
+              onTap: () => setState(() => _amountCtrl.text = '$a'),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: _amountCtrl.text == '$a'
+                      ? AppColors.primary.withValues(alpha: 0.14)
+                      : t.cardColor,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: _amountCtrl.text == '$a'
+                        ? AppColors.primary
+                        : t.dividerColor,
+                  ),
+                ),
+                child: Text(
+                  '${widget.currency} ${NumberFormat('#,###').format(a)}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: _amountCtrl.text == '$a'
+                        ? AppColors.primary
+                        : null,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 14),
+
+        WsTextField(
+          controller: _amountCtrl,
+          label: 'Custom amount',
+          hint: 'e.g. 3000',
+          icon: Icons.payments_outlined,
+          keyboardType: TextInputType.number,
+        ),
+        const SizedBox(height: 14),
+
+        if (_method == 'mpesa')
+          WsTextField(
+            controller: _phoneCtrl,
+            label: 'M-Pesa phone number',
+            hint: '+254 7XX XXX XXX',
+            icon: Icons.phone_outlined,
+            keyboardType: TextInputType.phone,
+          ),
+        const SizedBox(height: 20),
+
+        FilledButton(
+          onPressed: _busy ? null : _submit,
+          child: _busy
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2.5, color: Colors.white),
+                )
+              : const Text('Top up'),
         ),
       ],
     );
   }
 
-  Widget _proFeature(
-      BuildContext context, IconData icon, String text, Color subtext) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: AppColors.primary, size: 18),
+  Widget _buildAwaiting(ThemeData t, Color subtext) {
+    return Column(
+      children: [
+        const SizedBox(height: 24),
+        const CircularProgressIndicator(
+            color: AppColors.primary, strokeWidth: 3),
+        const SizedBox(height: 20),
+        const Text(
+          'Waiting for M-Pesa confirmation...',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Please check your phone and enter your M-Pesa PIN to complete the payment.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: subtext, fontSize: 13),
+        ),
+        if (_topUpRef != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            'Ref: $_topUpRef',
+            style: TextStyle(color: subtext, fontSize: 11),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(text,
-                style: const TextStyle(fontWeight: FontWeight.w500)),
-          ),
-          const Icon(Icons.lock_rounded, size: 16, color: AppColors.primary),
         ],
-      ),
+        const SizedBox(height: 24),
+        OutlinedButton(
+          onPressed: () {
+            _pollTimer?.cancel();
+            Navigator.pop(context);
+          },
+          child: const Text('Cancel'),
+        ),
+      ],
     );
   }
 
-  Widget _divider(Color color) {
-    return Divider(height: 1, color: color);
+  Widget _buildSuccess(ThemeData t) {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: AppColors.success.withValues(alpha: 0.14),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.check_rounded,
+              color: AppColors.success, size: 36),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Payment received!',
+          style:
+              t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Your wallet balance has been updated.',
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 20),
+        FilledButton(
+          onPressed: () {
+            widget.onComplete();
+            Navigator.pop(context);
+          },
+          child: const Text('Done'),
+        ),
+      ],
+    );
   }
 }

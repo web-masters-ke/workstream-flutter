@@ -29,33 +29,45 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _boot() async {
-    final prefs = await SharedPreferences.getInstance();
-    final onboarded = prefs.getBool(PrefsKeys.onboarded) ?? false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final onboarded = prefs.getBool(PrefsKeys.onboarded) ?? false;
 
-    if (!mounted) return;
-    final auth = context.read<AuthController>();
-    await auth.bootstrap();
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
+      if (!mounted) return;
+      final auth = context.read<AuthController>();
+      // Timeout bootstrap so the splash never hangs forever
+      await auth.bootstrap().timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {/* proceed with whatever state we have */},
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      if (!mounted) return;
 
-    if (!onboarded) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const OnboardingScreen()),
-      );
-      return;
-    }
-    if (auth.status == AuthStatus.authenticated) {
-      // fire-and-forget realtime + push registration
-      unawaited(RealtimeService.instance.connect());
-      unawaited(PushService.instance.init());
-      final isAdmin = auth.user?.isAdmin ?? false;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) =>
-              isAdmin ? const AdminShell() : const MainShell(),
-        ),
-      );
-    } else {
+      if (!onboarded) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(builder: (_) => const OnboardingScreen()),
+        );
+        return;
+      }
+      if (auth.status == AuthStatus.authenticated) {
+        // fire-and-forget realtime + push registration
+        unawaited(RealtimeService.instance.connect());
+        unawaited(PushService.instance.init());
+        final isAdmin = auth.user?.isAdmin ?? false;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                isAdmin ? const AdminShell() : const MainShell(),
+          ),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+        );
+      }
+    } catch (_) {
+      // If anything goes wrong, go to login
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
       );

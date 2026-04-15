@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_tasks_screen.dart';
 import 'admin_team_screen.dart';
+import 'agents_manage_screen.dart';
 import 'billing_screen.dart';
 import 'call_screen.dart';
 import 'chat_list_screen.dart';
@@ -20,11 +21,12 @@ import 'jobs_screen.dart';
 import 'marketplace_screen.dart';
 import 'my_listings_screen.dart';
 import 'notifications_screen.dart';
-import 'performance_screen.dart';
 import 'profile_screen.dart';
+import 'qa_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'shifts_screen.dart';
+import 'workspaces_screen.dart';
 
 class AdminShell extends StatefulWidget {
   const AdminShell({super.key});
@@ -44,6 +46,7 @@ class _AdminShellState extends State<AdminShell> {
     AdminDashboardScreen(),
     AdminTasksScreen(),
     ChatListScreen(),
+    CallsScreen(),
     ProfileScreen(),
   ];
 
@@ -199,7 +202,7 @@ class _AdminShellState extends State<AdminShell> {
                   ),
                   // Avatar
                   GestureDetector(
-                    onTap: () => setState(() => _index = 3),
+                    onTap: () => setState(() => _index = 4),
                     child: CircleAvatar(
                       radius: 18,
                       backgroundColor:
@@ -316,10 +319,11 @@ class _AdminShellState extends State<AdminShell> {
   }
 
   static const _tabs = [
-    _Tab('Dashboard', Icons.dashboard_outlined,  Icons.dashboard_rounded),
-    _Tab('Tasks',     Icons.assignment_outlined, Icons.assignment_rounded),
-    _Tab('Chat',      Icons.chat_bubble_outline, Icons.chat_bubble_rounded),
-    _Tab('Profile',   Icons.person_outline,      Icons.person_rounded),
+    _Tab('Dashboard', Icons.dashboard_outlined,       Icons.dashboard_rounded),
+    _Tab('Tasks',     Icons.assignment_outlined,      Icons.assignment_rounded),
+    _Tab('Chat',      Icons.chat_bubble_outline,      Icons.chat_bubble_rounded),
+    _Tab('Calls',     Icons.phone_in_talk_outlined,   Icons.phone_in_talk_rounded),
+    _Tab('Profile',   Icons.person_outline,           Icons.person_rounded),
   ];
 }
 
@@ -411,14 +415,16 @@ class _AdminDrawer extends StatelessWidget {
                 () => onPush(const AdminTasksScreen())),
             _item(context, Icons.report_problem_outlined, 'Escalations',
                 () => onPush(const DisputesListScreen())),
-            _item(context, Icons.verified_outlined, 'Quality',
-                () => onPush(const PerformanceScreen())),
+            _item(context, Icons.verified_outlined, 'Quality (QA)',
+                () => onPush(const QaScreen())),
             _item(context, Icons.schedule_rounded, 'Shifts',
                 () => onPush(const ShiftsScreen())),
 
             _sectionLabel('People', subtext),
-            _item(context, Icons.groups_outlined, 'Agents & Team',
+            _item(context, Icons.groups_outlined, 'Team',
                 () => onPush(const AdminTeamScreen())),
+            _item(context, Icons.person_search_rounded, 'Agents',
+                () => onPush(const AgentsManageScreen())),
             _item(context, Icons.storefront_outlined, 'Free Agents',
                 () => onPush(const MarketplaceScreen())),
             _item(context, Icons.list_alt_rounded, 'My Listings',
@@ -428,7 +434,7 @@ class _AdminDrawer extends StatelessWidget {
             _item(context, Icons.chat_bubble_outline_rounded, 'Inbox',
                 () => onPush(const ChatListScreen())),
             _item(context, Icons.video_call_rounded, 'Calls', () {
-              onPush(const CallScreen(contactName: 'New call'));
+              onPush(const CallsScreen());
             }),
             _item(context, Icons.notifications_outlined, 'Notifications',
                 () => onPush(const NotificationsScreen())),
@@ -440,6 +446,8 @@ class _AdminDrawer extends StatelessWidget {
             _sectionLabel('Account', subtext),
             _item(context, Icons.credit_card_rounded, 'Billing',
                 () => onPush(const BillingScreen())),
+            _item(context, Icons.domain_outlined, 'Workspaces',
+                () => onPush(const WorkspacesScreen())),
             _item(context, Icons.person_outline, 'Profile',
                 () => onPush(const ProfileScreen())),
             _item(context, Icons.settings_outlined, 'Settings',

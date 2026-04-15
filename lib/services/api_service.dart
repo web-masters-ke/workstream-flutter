@@ -13,6 +13,12 @@ class ApiException implements Exception {
   String toString() => 'ApiException($status): $message';
 }
 
+/// Strip "SomeException(123): " prefix from error strings for UI display.
+String cleanError(Object e) {
+  if (e is ApiException) return e.message;
+  return e.toString().replaceFirst(RegExp(r'^[A-Za-z]+Exception\([^)]*\):\s*'), '');
+}
+
 /// Backend response envelope helper.
 ///
 /// Backend wraps every response as `{ success, data, timestamp }`.
@@ -35,6 +41,8 @@ T unwrap<T>(dynamic response) {
 
 /// Singleton Dio-backed API service for the WorkStream backend.
 class ApiService {
+  bool _isRefreshing = false;
+
   ApiService._internal() {
     _dio = Dio(
       BaseOptions(
@@ -58,9 +66,14 @@ class ApiService {
           handler.next(options);
         },
         onError: (e, handler) async {
-          if (e.response?.statusCode == 401) {
+          final url = e.requestOptions.path;
+          // Skip refresh logic for auth endpoints to prevent infinite loops
+          if (e.response?.statusCode == 401 &&
+              !url.contains('/auth/') &&
+              !_isRefreshing) {
             final refreshToken = await _readRefreshToken();
             if (refreshToken != null && refreshToken.isNotEmpty) {
+              _isRefreshing = true;
               try {
                 final resp = await _dio.post<Map<String, dynamic>>(
                   '/auth/refresh',
@@ -78,10 +91,17 @@ class ApiService {
                   return handler.resolve(retried);
                 }
               } catch (_) {
-                // refresh failed — clear tokens, let caller handle 401
+                // refresh failed — clear tokens and force re-login
                 await setToken(null);
                 await setRefreshToken(null);
+                onAuthExpired?.call();
+                return handler.next(e);
+              } finally {
+                _isRefreshing = false;
               }
+            } else {
+              // no refresh token — force re-login
+              onAuthExpired?.call();
             }
           }
           handler.next(e);
@@ -92,6 +112,9 @@ class ApiService {
 
   static final ApiService instance = ApiService._internal();
   late final Dio _dio;
+
+  /// Called when auth is fully expired (refresh failed or no refresh token).
+  void Function()? onAuthExpired;
 
   Dio get dio => _dio;
 
@@ -176,10 +199,39 @@ class ApiService {
 
   ApiException _toApi(DioException e) {
     final resp = e.response?.data;
-    String msg = e.message ?? 'Network error';
-    if (resp is Map && resp['message'] != null) {
-      msg = resp['message'].toString();
+    final status = e.response?.statusCode;
+    String msg;
+
+    if (resp is Map) {
+      // Wrapped envelope: { success:false, error:{ code, message, details }, ... }
+      final errField = resp['error'];
+      // Standard NestJS: { statusCode, message, error }
+      msg = resp['message']?.toString() ??
+          (errField is Map ? errField['message']?.toString() : null) ??
+          'Request failed';
+    } else if (resp is String && resp.trim().isNotEmpty) {
+      msg = resp.trim();
+    } else if (status != null) {
+      msg = _statusMessage(status);
+    } else {
+      msg = 'Network error — check your connection';
     }
-    return ApiException(msg, status: e.response?.statusCode, data: resp);
+
+    return ApiException(msg, status: status, data: resp);
+  }
+
+  static String _statusMessage(int status) {
+    return switch (status) {
+      400 => 'Bad request',
+      401 => 'Unauthorized',
+      403 => 'Access denied',
+      404 => 'Not found',
+      409 => 'Conflict — duplicate entry',
+      422 => 'Validation failed',
+      429 => 'Too many requests',
+      500 => 'Server error — please try again',
+      503 => 'Service unavailable',
+      _ => 'Request failed ($status)',
+    };
   }
 }

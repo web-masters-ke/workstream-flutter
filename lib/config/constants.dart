@@ -7,14 +7,13 @@ library;
 /// Android emulators can reach a backend running on the host machine.
 const String kApiBaseUrl = String.fromEnvironment(
   'WS_API_BASE_URL',
-  // Physical device: use LAN IP. Emulator: use 10.0.2.2
-  defaultValue: 'http://192.168.150.204:3000/api/v1',
+  defaultValue: 'http://51.24.45.93:3040/api/v1',
 );
 
 /// Base URL for the WebSocket gateway.
 const String kWsBaseUrl = String.fromEnvironment(
   'WS_WS_BASE_URL',
-  defaultValue: 'ws://192.168.150.204:3000',
+  defaultValue: 'ws://51.24.45.93:3040',
 );
 
 /// Default network timeout for Dio requests.

@@ -5,8 +5,9 @@ import '../controllers/auth_controller.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/primitives.dart';
+import 'admin_shell.dart';
 import 'login_screen.dart';
-import 'otp_verify_screen.dart';
+import 'main_shell.dart';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -92,6 +93,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Map<String, String> _errors = {};
   bool _loading = false;
   String? _serverError;
+  bool _emailTaken = false;
+  bool _phoneTaken = false;
 
   @override
   void dispose() {
@@ -141,18 +144,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // ── Navigation ──────────────────────────────────────────────────────────────
 
   void _switchType(_AccountType v) {
-    setState(() { _type = v; _step = 1; _errors = {}; });
+    setState(() { _type = v; _step = 1; _errors = {}; _clearErrors(); });
+  }
+
+  void _clearErrors() {
+    _serverError = null;
+    _emailTaken = false;
+    _phoneTaken = false;
+  }
+
+  void goToStep(int step) {
+    setState(() { _step = step; _clearErrors(); _errors = {}; });
   }
 
   void _next() {
-    setState(() => _serverError = null);
+    setState(_clearErrors);
     if (_step == 1 && !_validateStep1()) return;
     if (_step == 2 && !_validateStep2()) return;
     if (_step < 4) setState(() => _step++);
   }
 
   void _back() {
-    if (_step > 1) setState(() { _step--; _errors = {}; });
+    if (_step > 1) setState(() { _step--; _errors = {}; _clearErrors(); });
   }
 
   // ── Submit ───────────────────────────────────────────────────────────────────
@@ -203,17 +216,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!mounted) return;
       if (ok || auth.status == AuthStatus.authenticated) {
+        // User is already authenticated — go straight to the app.
+        // Route BUSINESS/ADMIN users to AdminShell, agents to MainShell.
+        final isAdmin = auth.user?.isAdmin ?? false;
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute<void>(
-            builder: (_) => OtpVerifyScreen(
-              identifier: _email.text.trim(),
-              purpose: OtpPurpose.register,
-            ),
+            builder: (_) => isAdmin ? const AdminShell() : const MainShell(),
           ),
           (_) => false,
         );
       } else {
-        setState(() => _serverError = auth.error ?? 'Registration failed');
+        final err = auth.error ?? 'Registration failed';
+        final errLow = err.toLowerCase();
+        final emailTaken = errLow.contains('email');
+        final phoneTaken = errLow.contains('phone');
+        setState(() {
+          _emailTaken = emailTaken;
+          _phoneTaken = phoneTaken;
+          _serverError = emailTaken
+              ? 'That email address is already registered.'
+              : phoneTaken
+                  ? 'That phone number is already registered.'
+                  : err;
+        });
       }
     } catch (e) {
       setState(() => _serverError = e.toString());
@@ -346,6 +371,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         const SizedBox(height: 20),
         if (_serverError != null) _ErrorBanner(_serverError!),
+        if (_emailTaken) ...[
+          const SizedBox(height: 6),
+          Center(
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+              ),
+              child: const Text.rich(TextSpan(
+                style: TextStyle(fontSize: 13),
+                children: [
+                  TextSpan(text: 'Already have an account? '),
+                  TextSpan(
+                    text: 'Sign in instead',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              )),
+            ),
+          ),
+        ],
         if (_serverError != null) const SizedBox(height: 12),
         FilledButton(
           onPressed: _loading ? null : _submit,
@@ -890,6 +938,46 @@ class _BizStep4 extends StatelessWidget {
         if (b._serverError != null) ...[
           const SizedBox(height: 16),
           _ErrorBanner(b._serverError!),
+          const SizedBox(height: 6),
+          if (b._emailTaken)
+            Center(
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pushReplacement(
+                  MaterialPageRoute<void>(
+                      builder: (_) => const LoginScreen()),
+                ),
+                child: const Text.rich(TextSpan(
+                  style: TextStyle(fontSize: 13),
+                  children: [
+                    TextSpan(text: 'Already have an account? '),
+                    TextSpan(
+                      text: 'Sign in instead',
+                      style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                )),
+              ),
+            )
+          else if (b._phoneTaken)
+            Center(
+              child: TextButton(
+                onPressed: () => b.goToStep(1),
+                child: const Text.rich(TextSpan(
+                  style: TextStyle(fontSize: 13),
+                  children: [
+                    TextSpan(text: 'Go back and '),
+                    TextSpan(
+                      text: 'change your phone number',
+                      style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                )),
+              ),
+            ),
         ],
 
         const SizedBox(height: 28),

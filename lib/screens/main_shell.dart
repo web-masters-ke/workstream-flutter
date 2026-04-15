@@ -81,6 +81,7 @@ class _MainShellState extends State<MainShell> {
   void _showAvailabilitySheet() {
     showModalBottomSheet<void>(
       context: context,
+      useSafeArea: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -483,7 +484,7 @@ class _AgentDrawer extends StatelessWidget {
 
             _sectionLabel('Communication', subtext),
             _item(context, Icons.video_call_rounded, 'Calls', () {
-              onPush(const CallScreen(contactName: 'New call'));
+              onPush(const CallsScreen());
             }),
             _item(context, Icons.notifications_outlined, 'Notifications',
                 () => onPush(const NotificationsScreen())),

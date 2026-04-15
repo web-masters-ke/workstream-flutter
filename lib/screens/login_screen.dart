@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/primitives.dart';
+import 'admin_shell.dart';
 import 'forgot_password_screen.dart';
 import 'main_shell.dart';
 import 'register_screen.dart';
@@ -38,8 +39,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted) return;
     if (ok) {
+      final isAdmin = auth.user?.isAdmin ?? false;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const MainShell()),
+        MaterialPageRoute<void>(
+          builder: (_) => isAdmin ? const AdminShell() : const MainShell(),
+        ),
         (_) => false,
       );
     } else {

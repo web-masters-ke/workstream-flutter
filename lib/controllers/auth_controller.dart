@@ -1,8 +1,10 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/constants.dart';
 import '../models/user.dart';
+import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 
@@ -249,7 +251,22 @@ class AuthController extends ChangeNotifier {
   }
 
   String _clean(Object e) {
+    if (e is ApiException) return e.message;
+    if (e is DioException) {
+      final resp = e.response?.data;
+      if (resp is Map) {
+        final errField = resp['error'];
+        final msg = resp['message']?.toString() ??
+            (errField is Map ? errField['message']?.toString() : null);
+        if (msg != null && msg.isNotEmpty) return msg;
+      }
+      final status = e.response?.statusCode;
+      if (status == 409) return 'Already registered';
+      if (status != null) return 'Request failed ($status)';
+      return 'Network error — check your connection';
+    }
     final s = e.toString();
-    return s.startsWith('ApiException') ? s.replaceFirst(RegExp(r'^[^:]+:\s*'), '') : s;
+    // Strip "ApiException(409): " prefix if somehow not caught above
+    return s.replaceFirst(RegExp(r'^[A-Za-z]+Exception\([^)]*\):\s*'), '');
   }
 }

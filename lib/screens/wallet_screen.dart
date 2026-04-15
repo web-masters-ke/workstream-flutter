@@ -62,6 +62,7 @@ class _WalletScreenState extends State<WalletScreen> {
         : AppColors.lightSubtext;
     showModalBottomSheet<void>(
       context: context,
+      useSafeArea: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
