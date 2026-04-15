@@ -797,10 +797,11 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
     final t = Theme.of(context);
     final isDark = t.brightness == Brightness.dark;
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
-    final bottomPad = MediaQuery.of(context).viewInsets.bottom;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomNav = MediaQuery.of(context).padding.bottom;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomPad),
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomInset + bottomNav),
       child: SingleChildScrollView(
         child: Form(
           key: _formKey,

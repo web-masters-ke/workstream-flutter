@@ -4,20 +4,25 @@ import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/primitives.dart';
+import 'admin_task_detail_screen.dart';
 
 // ─── Simple agent model for the dropdown ────────────────────────────────────
 
 class _Agent {
   final String id;
   final String name;
-  _Agent({required this.id, required this.name});
+  final String email;
+  _Agent({required this.id, required this.name, required this.email});
 
   factory _Agent.fromJson(Map<String, dynamic> j) {
-    final fn = j['firstName']?.toString() ?? '';
-    final ln = j['lastName']?.toString() ?? '';
+    final user = j['user'] is Map ? j['user'] as Map<String, dynamic> : j;
+    final fn = (user['firstName'] ?? j['firstName'])?.toString() ?? '';
+    final ln = (user['lastName'] ?? j['lastName'])?.toString() ?? '';
+    final email = (user['email'] ?? j['email'])?.toString() ?? '';
     var name = '$fn $ln'.trim();
-    if (name.isEmpty) name = j['name']?.toString() ?? j['email']?.toString() ?? 'Agent';
-    return _Agent(id: j['id']?.toString() ?? '', name: name);
+    if (name.isEmpty) name = j['name']?.toString() ?? email;
+    if (name.isEmpty) name = 'Agent';
+    return _Agent(id: j['id']?.toString() ?? '', name: name, email: email);
   }
 }
 
@@ -221,6 +226,7 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
                                   _TaskTile(
                                     task: _tasks[i],
                                     onDelete: () => _confirmDelete(_tasks[i]),
+                                    onTap: () => _openTask(_tasks[i]),
                                   ),
                             ),
                           ),
@@ -281,6 +287,14 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
     }
   }
 
+  void _openTask(_Task task) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AdminTaskDetailScreen(taskId: task.id),
+      ),
+    );
+  }
+
   void _showCreateSheet() {
     showModalBottomSheet<bool>(
       context: context,
@@ -299,7 +313,8 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
 class _TaskTile extends StatelessWidget {
   final _Task task;
   final VoidCallback? onDelete;
-  const _TaskTile({required this.task, this.onDelete});
+  final VoidCallback? onTap;
+  const _TaskTile({required this.task, this.onDelete, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -311,6 +326,7 @@ class _TaskTile extends StatelessWidget {
     final (statusColor, statusBg) = _statusColors(task.status);
 
     return ListTile(
+      onTap: onTap,
       onLongPress: onDelete,
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
@@ -472,6 +488,8 @@ class _AdminCreateTaskSheetState extends State<_AdminCreateTaskSheet> {
   String _priority = 'MEDIUM';
   DateTime? _dueAt;
   String? _selectedAgentId;
+  String? _selectedAgentName;
+  String? _businessId;
   List<_Agent> _agents = [];
   bool _loadingAgents = true;
   bool _submitting = false;
@@ -481,6 +499,25 @@ class _AdminCreateTaskSheetState extends State<_AdminCreateTaskSheet> {
   void initState() {
     super.initState();
     _loadAgents();
+    _loadBusinessId();
+  }
+
+  Future<void> _loadBusinessId() async {
+    try {
+      final resp = await ApiService.instance.get('/businesses');
+      final data = unwrap<dynamic>(resp);
+      List<dynamic> list;
+      if (data is List) {
+        list = data;
+      } else if (data is Map && data['items'] is List) {
+        list = data['items'] as List;
+      } else {
+        list = [];
+      }
+      if (list.isNotEmpty && list.first is Map) {
+        if (mounted) setState(() => _businessId = (list.first as Map)['id']?.toString());
+      }
+    } catch (_) {}
   }
 
   @override
@@ -493,7 +530,7 @@ class _AdminCreateTaskSheetState extends State<_AdminCreateTaskSheet> {
 
   Future<void> _loadAgents() async {
     try {
-      final resp = await ApiService.instance.get('/agents', query: {'limit': '200'});
+      final resp = await ApiService.instance.get('/agents', query: {'limit': '100'});
       final data = unwrap<dynamic>(resp);
       List<dynamic> list;
       if (data is List) {
@@ -537,6 +574,28 @@ class _AdminCreateTaskSheetState extends State<_AdminCreateTaskSheet> {
     });
   }
 
+  void _showAgentPicker() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _AgentPickerSheet(
+        agents: _agents,
+        selected: _selectedAgentId,
+        onPicked: (id, name) {
+          setState(() {
+            _selectedAgentId = id;
+            _selectedAgentName = name;
+          });
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -550,12 +609,9 @@ class _AdminCreateTaskSheetState extends State<_AdminCreateTaskSheet> {
         'priority': _priority,
         'slaMinutes': int.tryParse(_slaCtrl.text.trim()) ?? 60,
       };
-      if (_dueAt != null) {
-        body['dueAt'] = _dueAt!.toIso8601String();
-      }
-      if (_selectedAgentId != null) {
-        body['assignedAgentId'] = _selectedAgentId;
-      }
+      if (_businessId != null) body['businessId'] = _businessId;
+      if (_dueAt != null) body['dueAt'] = _dueAt!.toIso8601String();
+      if (_selectedAgentId != null) body['assignedAgentId'] = _selectedAgentId;
       await ApiService.instance.post('/tasks', body: body);
       if (!mounted) return;
       Navigator.pop(context, true);
@@ -579,10 +635,11 @@ class _AdminCreateTaskSheetState extends State<_AdminCreateTaskSheet> {
     final t = Theme.of(context);
     final isDark = t.brightness == Brightness.dark;
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
-    final bottomPad = MediaQuery.of(context).viewInsets.bottom;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomNav = MediaQuery.of(context).padding.bottom;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomPad),
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomInset + bottomNav),
       child: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -715,36 +772,44 @@ class _AdminCreateTaskSheetState extends State<_AdminCreateTaskSheet> {
               // Assign agent
               _label('Assign agent (optional)', isDark),
               const SizedBox(height: 6),
-              _loadingAgents
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Center(
-                          child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )),
-                    )
-                  : DropdownButtonFormField<String?>(
-                      initialValue: _selectedAgentId,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        hintText: 'Unassigned',
-                        prefixIcon: Icon(Icons.person_outline_rounded, size: 20),
-                      ),
-                      items: [
-                        const DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text('Unassigned'),
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: _loadingAgents ? null : () => _showAgentPicker(),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: t.dividerColor),
+                    borderRadius: BorderRadius.circular(12),
+                    color: t.inputDecorationTheme.fillColor,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_outline_rounded, size: 18, color: subtext),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _selectedAgentName ?? 'Unassigned',
+                          style: TextStyle(
+                            color: _selectedAgentName != null ? null : subtext,
+                            fontSize: 14,
+                          ),
                         ),
-                        ..._agents.map((a) => DropdownMenuItem<String?>(
-                              value: a.id,
-                              child: Text(a.name,
-                                  overflow: TextOverflow.ellipsis),
-                            )),
-                      ],
-                      onChanged: (v) => setState(() => _selectedAgentId = v),
-                    ),
+                      ),
+                      if (_selectedAgentId != null)
+                        GestureDetector(
+                          onTap: () => setState(() {
+                            _selectedAgentId = null;
+                            _selectedAgentName = null;
+                          }),
+                          child: Icon(Icons.close_rounded, size: 18, color: subtext),
+                        )
+                      else
+                        Icon(Icons.arrow_drop_down_rounded, color: subtext),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
 
               // Error
@@ -820,5 +885,189 @@ class _AdminCreateTaskSheetState extends State<_AdminCreateTaskSheet> {
       default:
         return AppColors.lightSubtext;
     }
+  }
+}
+
+// ─── Searchable Agent Picker Sheet ──────────────────────────────────────────
+
+class _AgentPickerSheet extends StatefulWidget {
+  final List<_Agent> agents;
+  final String? selected;
+  final void Function(String? id, String? name) onPicked;
+
+  const _AgentPickerSheet({
+    required this.agents,
+    required this.selected,
+    required this.onPicked,
+  });
+
+  @override
+  State<_AgentPickerSheet> createState() => _AgentPickerSheetState();
+}
+
+class _AgentPickerSheetState extends State<_AgentPickerSheet> {
+  final _searchCtrl = TextEditingController();
+  List<_Agent> _filtered = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filtered = widget.agents;
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _filter(String q) {
+    final query = q.toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        _filtered = widget.agents;
+      } else {
+        _filtered = widget.agents
+            .where((a) =>
+                a.name.toLowerCase().contains(query) ||
+                a.email.toLowerCase().contains(query))
+            .toList();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final subtext = t.brightness == Brightness.dark
+        ? AppColors.darkSubtext
+        : AppColors.lightSubtext;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom,
+      ),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.6,
+        child: Column(
+          children: [
+            // Handle
+            Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 8),
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: t.dividerColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            // Title
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Text('Select agent',
+                      style: t.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w800)),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => widget.onPicked(null, null),
+                    child: const Text('Unassigned'),
+                  ),
+                ],
+              ),
+            ),
+            // Search bar
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+              child: TextField(
+                controller: _searchCtrl,
+                onChanged: _filter,
+                decoration: InputDecoration(
+                  hintText: 'Search by name or email...',
+                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                  suffixIcon: _searchCtrl.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            _filter('');
+                          },
+                        )
+                      : null,
+                  isDense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+              ),
+            ),
+            // Count
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${_filtered.length} agent${_filtered.length == 1 ? '' : 's'}',
+                  style: TextStyle(color: subtext, fontSize: 12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Agent list
+            Expanded(
+              child: _filtered.isEmpty
+                  ? Center(
+                      child: Text('No agents found',
+                          style: TextStyle(color: subtext)),
+                    )
+                  : ListView.builder(
+                      itemCount: _filtered.length,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      itemBuilder: (_, i) {
+                        final a = _filtered[i];
+                        final selected = a.id == widget.selected;
+                        return ListTile(
+                          selected: selected,
+                          selectedTileColor:
+                              AppColors.primary.withValues(alpha: 0.08),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          leading: CircleAvatar(
+                            radius: 18,
+                            backgroundColor:
+                                AppColors.primary.withValues(alpha: 0.15),
+                            child: Text(
+                              a.name.isNotEmpty
+                                  ? a.name[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          title: Text(a.name,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 14)),
+                          subtitle: Text(a.email,
+                              style: TextStyle(
+                                  color: subtext, fontSize: 12)),
+                          trailing: selected
+                              ? const Icon(Icons.check_circle_rounded,
+                                  color: AppColors.primary, size: 20)
+                              : null,
+                          onTap: () => widget.onPicked(a.id, a.name),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
