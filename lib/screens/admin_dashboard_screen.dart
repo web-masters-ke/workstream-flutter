@@ -147,14 +147,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 onTap: () => _push(context, const AgentsManageScreen())),
               _KpiCard(label: 'Active Tasks', value: '$activeTasks', icon: Icons.assignment_rounded, color: AppColors.warn,
                 onTap: () => _push(context, const AdminTasksScreen())),
-              _KpiCard(label: 'GMV (30d)', value: _money(gmv), icon: Icons.trending_up_rounded, color: AppColors.success,
+              _KpiCard(label: 'Total Revenue', value: _money(gmv), icon: Icons.trending_up_rounded, color: AppColors.success,
                 onTap: () => _push(context, const ReportsScreen())),
-              _KpiCard(label: 'Revenue (30d)', value: _money(revenue), icon: Icons.payments_rounded, color: AppColors.primary,
-                onTap: () => _push(context, const ReportsScreen())),
+              _KpiCard(label: 'Earnings (30d)', value: _money(revenue), icon: Icons.payments_rounded, color: AppColors.primary,
+                onTap: () => _push(context, const BillingScreen())),
               _KpiCard(label: 'Open Disputes', value: '$openDisputes', icon: Icons.gavel_rounded, color: AppColors.danger,
                 onTap: () => _push(context, const DisputesListScreen())),
               _KpiCard(label: 'Pending KYC', value: '$pendingKyc', icon: Icons.verified_user_outlined, color: AppColors.warn,
-                onTap: () => _push(context, const AdminTeamScreen())),
+                onTap: () => _push(context, const AgentsManageScreen())),
             ],
           ),
           const SizedBox(height: 24),
@@ -165,7 +165,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Row(
             children: [
               Expanded(child: GestureDetector(
-                onTap: () => _push(context, const AdminTeamScreen()),
+                onTap: () => _push(context, const AgentsManageScreen()),
                 child: _ActionChip(icon: Icons.verified_outlined, label: 'KYC Queue', count: pendingKyc, color: AppColors.warn),
               )),
               const SizedBox(width: 8),
