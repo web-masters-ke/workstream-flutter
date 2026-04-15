@@ -7,7 +7,6 @@ import '../theme/app_theme.dart';
 import 'admin_tasks_screen.dart';
 import 'admin_team_screen.dart';
 import 'agents_manage_screen.dart';
-import 'billing_screen.dart';
 import 'disputes_list_screen.dart';
 import 'reports_screen.dart';
 
@@ -148,9 +147,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               _KpiCard(label: 'Active Tasks', value: '$activeTasks', icon: Icons.assignment_rounded, color: AppColors.warn,
                 onTap: () => _push(context, const AdminTasksScreen())),
               _KpiCard(label: 'GMV (30d)', value: _money(gmv), icon: Icons.trending_up_rounded, color: AppColors.success,
-                onTap: () => _push(context, const BillingScreen())),
+                onTap: () => _push(context, const ReportsScreen())),
               _KpiCard(label: 'Revenue (30d)', value: _money(revenue), icon: Icons.payments_rounded, color: AppColors.primary,
-                onTap: () => _push(context, const BillingScreen())),
+                onTap: () => _push(context, const ReportsScreen())),
               _KpiCard(label: 'Open Disputes', value: '$openDisputes', icon: Icons.gavel_rounded, color: AppColors.danger,
                 onTap: () => _push(context, const DisputesListScreen())),
               _KpiCard(label: 'Pending KYC', value: '$pendingKyc', icon: Icons.verified_user_outlined, color: AppColors.warn,
