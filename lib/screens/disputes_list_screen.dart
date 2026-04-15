@@ -122,17 +122,33 @@ class _DisputesListScreenState extends State<DisputesListScreen> {
       _error = null;
     });
     try {
-      // Try /admin/disputes first, then /escalations, then /tasks?status=ON_HOLD
-      Map<String, dynamic> resp;
-      try {
-        resp = await ApiService.instance.get('/admin/disputes');
-      } catch (_) {
-        try {
-          resp = await ApiService.instance.get('/escalations');
-        } catch (_) {
-          resp = await ApiService.instance.get('/tasks', query: {'status': 'ON_HOLD'});
+      // Load tasks with escalation-related statuses
+      final results = await Future.wait([
+        ApiService.instance
+            .get('/tasks', query: {'status': 'ON_HOLD', 'limit': '50'})
+            .catchError((_) => <String, dynamic>{'success': true, 'data': []}),
+        ApiService.instance
+            .get('/tasks', query: {'status': 'CANCELLED', 'limit': '50'})
+            .catchError((_) => <String, dynamic>{'success': true, 'data': []}),
+        ApiService.instance
+            .get('/tasks', query: {'status': 'FAILED', 'limit': '50'})
+            .catchError((_) => <String, dynamic>{'success': true, 'data': []}),
+      ]);
+      // Merge all into one list, deduplicate by ID
+      final seen = <String>{};
+      final List<dynamic> allItems = [];
+      for (final resp in results) {
+        final raw = unwrap<dynamic>(resp);
+        List<dynamic> items;
+        if (raw is List) { items = raw; }
+        else if (raw is Map && raw['items'] is List) { items = raw['items'] as List; }
+        else { items = []; }
+        for (final item in items) {
+          final id = item is Map ? item['id']?.toString() : null;
+          if (id != null && seen.add(id)) allItems.add(item);
         }
       }
+      final resp = <String, dynamic>{'data': allItems};
       final raw = unwrap<dynamic>(resp);
       List<dynamic> list;
       if (raw is List) {
