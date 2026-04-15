@@ -300,16 +300,30 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
     try {
       // Create conversation for this task if one doesn't exist
       if (_conversationId == null) {
-        // Get assigned agent's userId to add as participant
-        final agentId = _task?['assignedAgentId']?.toString();
         final participantIds = <String>[];
-        if (agentId != null && agentId.isNotEmpty) {
-          // The agent record has a userId field
+        // Get agent userId from the assignments array
+        final assignments = _task?['assignments'];
+        if (assignments is List) {
+          for (final a in assignments) {
+            final uid = a?['agent']?['userId']?.toString();
+            if (uid != null && uid.isNotEmpty) {
+              participantIds.add(uid);
+              break;
+            }
+          }
+        }
+        // Fallback: use createdById from task
+        if (participantIds.isEmpty) {
+          final cid = _task?['createdById']?.toString();
+          if (cid != null && cid.isNotEmpty) participantIds.add(cid);
+        }
+        // Last resort: use own userId
+        if (participantIds.isEmpty) {
           try {
-            final agentResp = await ApiService.instance.get('/agents/$agentId');
-            final agentData = unwrap<Map<String, dynamic>>(agentResp);
-            final userId = agentData['userId']?.toString();
-            if (userId != null) participantIds.add(userId);
+            final me = unwrap<Map<String, dynamic>>(
+                await ApiService.instance.get('/auth/me'));
+            final myId = me['id']?.toString();
+            if (myId != null) participantIds.add(myId);
           } catch (_) {}
         }
         final convResp = await ApiService.instance.post(
