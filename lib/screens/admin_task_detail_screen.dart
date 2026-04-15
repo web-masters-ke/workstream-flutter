@@ -291,7 +291,11 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
       final uploadResp = await ApiService.instance.dio.post(
         '/media/upload',
         data: formData,
-        options: Options(contentType: 'multipart/form-data'),
+        queryParameters: {'kind': 'AUDIO'},
+        options: Options(
+          contentType: 'multipart/form-data',
+          headers: {'Content-Type': 'multipart/form-data'},
+        ),
       );
       final uploadData = uploadResp.data is Map<String, dynamic>
           ? uploadResp.data as Map<String, dynamic>
@@ -576,8 +580,11 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
       final uploadResp = await ApiService.instance.dio.post(
         '/media/upload',
         data: formData,
-        queryParameters: {'kind': 'chat'},
-        options: Options(contentType: 'multipart/form-data'),
+        queryParameters: {'kind': 'IMAGE'},
+        options: Options(
+          contentType: 'multipart/form-data',
+          headers: {'Content-Type': 'multipart/form-data'},
+        ),
       );
       final uploadData = uploadResp.data is Map<String, dynamic>
           ? uploadResp.data as Map<String, dynamic>
