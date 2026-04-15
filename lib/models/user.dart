@@ -35,6 +35,11 @@ class User {
   });
 
   String get fullName => '$firstName $lastName'.trim();
+  bool get isAdmin =>
+      role == 'ADMIN' ||
+      role == 'SUPER_ADMIN' ||
+      role == 'MANAGER' ||
+      role == 'SUPERVISOR';
   String get initials {
     final a = firstName.isNotEmpty ? firstName[0] : '';
     final b = lastName.isNotEmpty ? lastName[0] : '';

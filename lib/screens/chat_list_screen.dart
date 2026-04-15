@@ -42,9 +42,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   Widget build(BuildContext context) {
     final taskThreads =
-        _threads.where((t) => t.id.startsWith('task-')).toList();
+        _threads.where((t) => t.isTask).toList();
     final directThreads =
-        _threads.where((t) => !t.id.startsWith('task-')).toList();
+        _threads.where((t) => !t.isTask).toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Messages')),

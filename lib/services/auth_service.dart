@@ -21,7 +21,7 @@ class AuthService {
   }) async {
     final resp = await _api.post(
       '/auth/login',
-      body: {'identifier': emailOrPhone, 'password': password},
+      body: {'email': emailOrPhone, 'password': password},
     );
     return _consumeAuth(resp);
   }

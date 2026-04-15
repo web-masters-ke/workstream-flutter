@@ -1,6 +1,7 @@
 class ChatThread {
   final String id;
   final String title;
+  final String type; // 'TASK' | 'DIRECT' | 'GROUP'
   final String? avatarUrl;
   final String? lastMessage;
   final DateTime? lastMessageAt;
@@ -10,6 +11,7 @@ class ChatThread {
   ChatThread({
     required this.id,
     required this.title,
+    required this.type,
     this.avatarUrl,
     this.lastMessage,
     this.lastMessageAt,
@@ -17,15 +19,51 @@ class ChatThread {
     required this.online,
   });
 
-  factory ChatThread.fromJson(Map<String, dynamic> json) => ChatThread(
-    id: json['id']?.toString() ?? '',
-    title: json['title']?.toString() ?? '',
-    avatarUrl: json['avatarUrl']?.toString(),
-    lastMessage: json['lastMessage']?.toString(),
-    lastMessageAt: DateTime.tryParse(json['lastMessageAt']?.toString() ?? ''),
-    unread: (json['unread'] is num) ? (json['unread'] as num).toInt() : 0,
-    online: json['online'] == true,
-  );
+  bool get isTask => type == 'TASK';
+
+  factory ChatThread.fromJson(Map<String, dynamic> json) {
+    // Last message from embedded messages array (if present)
+    String? lastMsg;
+    DateTime? lastAt;
+    final msgs = json['messages'];
+    if (msgs is List && msgs.isNotEmpty) {
+      final last = msgs.last;
+      if (last is Map) {
+        lastMsg = last['body']?.toString();
+        lastAt = DateTime.tryParse(last['createdAt']?.toString() ?? '');
+      }
+    }
+
+    // Title: use explicit title, or derive from participants if missing
+    String title = json['title']?.toString() ?? '';
+    if (title.isEmpty) {
+      final participants = json['participants'];
+      if (participants is List && participants.isNotEmpty) {
+        title = participants
+            .whereType<Map>()
+            .map((p) {
+              final u = p['user'];
+              if (u is Map) return u['name']?.toString() ?? '';
+              return '';
+            })
+            .where((n) => n.isNotEmpty)
+            .join(', ');
+      }
+    }
+
+    return ChatThread(
+      id: json['id']?.toString() ?? '',
+      title: title.isEmpty ? 'Chat' : title,
+      type: json['type']?.toString() ?? 'DIRECT',
+      avatarUrl: json['avatarUrl']?.toString(),
+      lastMessage: lastMsg ?? json['lastMessage']?.toString(),
+      lastMessageAt: lastAt ??
+          DateTime.tryParse(json['lastMessageAt']?.toString() ?? '') ??
+          DateTime.tryParse(json['updatedAt']?.toString() ?? ''),
+      unread: (json['unread'] is num) ? (json['unread'] as num).toInt() : 0,
+      online: json['online'] == true,
+    );
+  }
 }
 
 class ChatMessage {
@@ -34,6 +72,7 @@ class ChatMessage {
   final String senderId;
   final String? senderName;
   final String body;
+  final String? attachmentUrl;
   final DateTime createdAt;
   final bool mine;
 
@@ -43,6 +82,7 @@ class ChatMessage {
     required this.senderId,
     this.senderName,
     required this.body,
+    this.attachmentUrl,
     required this.createdAt,
     required this.mine,
   });
@@ -52,12 +92,20 @@ class ChatMessage {
     required String currentUserId,
   }) {
     final senderId = json['senderId']?.toString() ?? '';
+    // Sender name from embedded sender object or flat field
+    String? senderName;
+    if (json['sender'] is Map) {
+      senderName = (json['sender'] as Map)['name']?.toString();
+    }
+    senderName ??= json['senderName']?.toString();
+
     return ChatMessage(
       id: json['id']?.toString() ?? '',
-      threadId: json['threadId']?.toString() ?? '',
+      threadId: (json['conversationId'] ?? json['threadId'])?.toString() ?? '',
       senderId: senderId,
-      senderName: json['senderName']?.toString(),
+      senderName: senderName,
       body: json['body']?.toString() ?? '',
+      attachmentUrl: json['attachmentUrl']?.toString(),
       createdAt:
           DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
           DateTime.now(),

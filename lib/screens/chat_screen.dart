@@ -1,16 +1,16 @@
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'dart:io';
 
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../controllers/auth_controller.dart';
+import '../models/message.dart';
+import '../services/api_service.dart';
+import '../services/chat_service.dart';
 import '../theme/app_theme.dart';
 import 'call_screen.dart';
-
-class _Msg {
-  final String body;
-  final bool mine;
-  final DateTime at;
-  final bool read;
-  _Msg(this.body, this.mine, this.at, {this.read = false});
-}
 
 class ChatScreen extends StatefulWidget {
   final String threadId;
@@ -24,26 +24,21 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
-  final List<_Msg> _messages = [];
-  bool _typing = false;
+
+  List<ChatMessage> _messages = [];
+  bool _loading = true;
+  bool _sending = false;
+  String? _error;
+  File? _pendingImage;
+
+  late String _currentUserId;
 
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    _messages.addAll([
-      _Msg('Hi! Are you ready to start batch 42?', false,
-          now.subtract(const Duration(minutes: 18))),
-      _Msg('Yes, reviewing the call script now.', true,
-          now.subtract(const Duration(minutes: 15)),
-          read: true),
-      _Msg('Great — start when you are. Deadline is 5pm.', false,
-          now.subtract(const Duration(minutes: 14))),
-      _Msg('On it. Will ping once first 5 calls are done.', true,
-          now.subtract(const Duration(minutes: 12)),
-          read: true),
-    ]);
-    _scrollToEnd(animated: false);
+    _currentUserId =
+        context.read<AuthController>().user?.id ?? '';
+    _loadMessages();
   }
 
   @override
@@ -53,41 +48,163 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  Future<void> _loadMessages() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final msgs = await ChatService().messages(
+        widget.threadId,
+        currentUserId: _currentUserId,
+      );
+      setState(() => _messages = msgs);
+      _scrollToEnd(animated: false);
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   void _scrollToEnd({bool animated = true}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) {
-        if (animated) {
-          _scroll.animateTo(
-            _scroll.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-          );
-        } else {
-          _scroll.jumpTo(_scroll.position.maxScrollExtent);
-        }
+      if (!_scroll.hasClients) return;
+      if (animated) {
+        _scroll.animateTo(
+          _scroll.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      } else {
+        _scroll.jumpTo(_scroll.position.maxScrollExtent);
       }
     });
   }
 
-  void _send() {
+  Future<void> _send() async {
     final text = _input.text.trim();
-    if (text.isEmpty) return;
+    final image = _pendingImage;
+    if (text.isEmpty && image == null) return;
+
     setState(() {
-      _messages.add(_Msg(text, true, DateTime.now()));
-      _input.clear();
+      _sending = true;
+      _pendingImage = null;
     });
-    _scrollToEnd();
-    // Simulate typing indicator + reply
-    setState(() => _typing = true);
-    Future<void>.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      setState(() {
-        _typing = false;
-        _messages.add(
-            _Msg('Got it, thanks!', false, DateTime.now()));
+    _input.clear();
+
+    try {
+      if (image != null) {
+        await _sendMedia(image);
+      }
+      if (text.isNotEmpty) {
+        final msg = await ChatService().send(
+          widget.threadId,
+          text,
+          currentUserId: _currentUserId,
+        );
+        setState(() => _messages.add(msg));
+        _scrollToEnd();
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to send message')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _sendMedia(File file) async {
+    try {
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          file.path,
+          filename: file.path.split('/').last,
+        ),
       });
+      final resp = await ApiService.instance.dio.post(
+        '/chat/threads/${widget.threadId}/media',
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      final data = ApiService.instance.dio.options.baseUrl.isNotEmpty
+          ? resp.data
+          : resp.data;
+      // Backend may return the created message directly or just the URL
+      final raw = data is Map<String, dynamic> ? data : <String, dynamic>{};
+      final body = raw['data'];
+      if (body is Map<String, dynamic>) {
+        final msg = ChatMessage.fromJson(body, currentUserId: _currentUserId);
+        if (mounted) setState(() => _messages.add(msg));
+      }
       _scrollToEnd();
-    });
+    } on DioException catch (_) {
+      // If media endpoint doesn't exist, fall back to sending filename as text
+      final name = file.path.split('/').last;
+      final msg = await ChatService().send(
+        widget.threadId,
+        '[Image] $name',
+        currentUserId: _currentUserId,
+      );
+      if (mounted) setState(() => _messages.add(msg));
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final source = await _showImageSourceSheet();
+    if (source == null) return;
+    final picked = await picker.pickImage(source: source, imageQuality: 80);
+    if (picked == null || !mounted) return;
+    setState(() => _pendingImage = File(picked.path));
+  }
+
+  Future<ImageSource?> _showImageSourceSheet() async {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).dividerColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: const Text('Choose from gallery'),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded),
+                title: const Text('Take a photo'),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -110,31 +227,25 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(widget.title,
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w700)),
-                  Text(
-                    _typing ? 'typing...' : 'online',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: _typing ? AppColors.accent : AppColors.success,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            Text(widget.title,
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w700)),
           ],
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh',
+            onPressed: _loadMessages,
+          ),
+          IconButton(
             icon: const Icon(Icons.call_rounded),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => CallScreen(contactName: widget.title),
+                builder: (_) => CallScreen(
+                  contactName: widget.title,
+                  threadId: widget.threadId,
+                ),
               ),
             ),
           ),
@@ -142,29 +253,103 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
+          // ── Message list ───────────────────────────────────
           Expanded(
-            child: ListView.builder(
-              controller: _scroll,
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length + (_typing ? 1 : 0),
-              itemBuilder: (_, i) {
-                if (_typing && i == _messages.length) {
-                  return _typingIndicator(t);
-                }
-                final msg = _messages[i];
-                // Show date separator when day changes
-                final showDate = i == 0 ||
-                    !_sameDay(
-                        _messages[i].at, _messages[i - 1].at);
-                return Column(
-                  children: [
-                    if (showDate) _dateSeparator(msg.at, t),
-                    _Bubble(msg: msg),
-                  ],
-                );
-              },
-            ),
+            child: _loading
+                ? const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2.5))
+                : _error != null
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.error_outline_rounded,
+                                color: AppColors.danger, size: 40),
+                            const SizedBox(height: 12),
+                            Text(_error!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    color: AppColors.danger)),
+                            const SizedBox(height: 12),
+                            TextButton(
+                                onPressed: _loadMessages,
+                                child: const Text('Retry')),
+                          ],
+                        ),
+                      )
+                    : _messages.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No messages yet. Say hi!',
+                              style: TextStyle(
+                                color: t.brightness == Brightness.dark
+                                    ? AppColors.darkSubtext
+                                    : AppColors.lightSubtext,
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scroll,
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _messages.length,
+                            itemBuilder: (_, i) {
+                              final msg = _messages[i];
+                              final showDate = i == 0 ||
+                                  !_sameDay(_messages[i].createdAt,
+                                      _messages[i - 1].createdAt);
+                              return Column(
+                                children: [
+                                  if (showDate)
+                                    _dateSeparator(msg.createdAt, t),
+                                  _Bubble(
+                                    msg: msg,
+                                    onMeetingTap: _joinMeeting,
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
           ),
+
+          // ── Pending image preview ──────────────────────────
+          if (_pendingImage != null)
+            Container(
+              height: 90,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: t.cardColor,
+                border: Border(top: BorderSide(color: t.dividerColor)),
+              ),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(
+                      _pendingImage!,
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _pendingImage!.path.split('/').last,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    onPressed: () =>
+                        setState(() => _pendingImage = null),
+                  ),
+                ],
+              ),
+            ),
+
+          // ── Input bar ──────────────────────────────────────
           SafeArea(
             top: false,
             child: Container(
@@ -177,17 +362,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.attach_file_rounded),
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Attachments coming soon')),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.mic_rounded),
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Voice notes coming soon')),
-                    ),
+                    onPressed: _pickImage,
+                    tooltip: 'Attach image',
                   ),
                   Expanded(
                     child: TextField(
@@ -214,24 +390,48 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Material(
-                    color: AppColors.accent,
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: _send,
-                      child: const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Icon(Icons.send_rounded,
-                            color: Colors.white, size: 18),
-                      ),
-                    ),
-                  ),
+                  _sending
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2.5),
+                          ),
+                        )
+                      : Material(
+                          color: (_input.text.isNotEmpty ||
+                                  _pendingImage != null)
+                              ? AppColors.accent
+                              : AppColors.accent.withValues(alpha: 0.4),
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: _send,
+                            child: const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Icon(Icons.send_rounded,
+                                  color: Colors.white, size: 18),
+                            ),
+                          ),
+                        ),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _joinMeeting(String url) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CallScreen(
+          contactName: widget.title,
+          meetingUrl: url,
+        ),
       ),
     );
   }
@@ -250,7 +450,8 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Center(
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
             color: t.cardColor,
             borderRadius: BorderRadius.circular(10),
@@ -262,53 +463,41 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _typingIndicator(ThemeData t) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: t.cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: t.dividerColor),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, (i) {
-                return Padding(
-                  padding: EdgeInsets.only(left: i > 0 ? 4 : 0),
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(
-                          alpha: 0.3 + (i * 0.2)),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
+// ─── Bubble ─────────────────────────────────────────────────────────────────
+
+// Detects JaaS / Jitsi meeting URLs embedded in a message body
+final _jaasRe = RegExp(r'https://8x8\.vc/[^/\s]+/([^\s/?#]+)');
+final _jitsiRe = RegExp(r'https://meet\.jit\.si/([^\s/?#]+)');
+
 class _Bubble extends StatelessWidget {
-  final _Msg msg;
-  const _Bubble({required this.msg});
+  final ChatMessage msg;
+  final void Function(String url)? onMeetingTap;
+
+  const _Bubble({required this.msg, this.onMeetingTap});
+
+  bool get _isImage {
+    final b = msg.body.toLowerCase();
+    return b.startsWith('http') &&
+        (b.endsWith('.jpg') ||
+            b.endsWith('.jpeg') ||
+            b.endsWith('.png') ||
+            b.endsWith('.gif') ||
+            b.endsWith('.webp'));
+  }
+
+  String? get _meetingUrl {
+    final m = _jaasRe.firstMatch(msg.body) ?? _jitsiRe.firstMatch(msg.body);
+    return m?.group(0);
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    final time = DateFormat('HH:mm').format(msg.at);
+    final time = DateFormat('HH:mm').format(msg.createdAt);
     final bubbleColor = msg.mine
         ? AppColors.accent
         : (t.brightness == Brightness.dark
@@ -319,6 +508,7 @@ class _Bubble extends StatelessWidget {
         : (t.brightness == Brightness.dark
             ? AppColors.darkText
             : AppColors.lightText);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -327,8 +517,8 @@ class _Bubble extends StatelessWidget {
         children: [
           Flexible(
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: bubbleColor,
                 borderRadius: BorderRadius.only(
@@ -337,38 +527,78 @@ class _Bubble extends StatelessWidget {
                   bottomLeft: Radius.circular(msg.mine ? 16 : 4),
                   bottomRight: Radius.circular(msg.mine ? 4 : 16),
                 ),
-                border:
-                    msg.mine ? null : Border.all(color: t.dividerColor),
+                border: msg.mine
+                    ? null
+                    : Border.all(color: t.dividerColor),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(msg.body, style: TextStyle(color: textColor)),
-                  const SizedBox(height: 3),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        time,
-                        style: TextStyle(
-                          color: textColor.withValues(alpha: 0.7),
-                          fontSize: 10,
+                  // Image attachment
+                  if (_isImage) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        msg.body,
+                        width: 200,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                            Icons.broken_image_outlined,
+                            size: 40),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                  ]
+                  // Meeting link
+                  else if (_meetingUrl != null) ...[
+                    Text(msg.body,
+                        style: TextStyle(color: textColor, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () => onMeetingTap?.call(_meetingUrl!),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: AppColors.success
+                                  .withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.video_call_rounded,
+                                color: AppColors.success, size: 18),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Join call',
+                              style: TextStyle(
+                                color: AppColors.success,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      if (msg.mine) ...[
-                        const SizedBox(width: 4),
-                        Icon(
-                          msg.read
-                              ? Icons.done_all_rounded
-                              : Icons.done_rounded,
-                          size: 14,
-                          color: msg.read
-                              ? Colors.lightBlueAccent
-                              : textColor.withValues(alpha: 0.5),
-                        ),
-                      ],
-                    ],
+                    ),
+                    const SizedBox(height: 6),
+                  ]
+                  // Plain text
+                  else ...[
+                    Text(msg.body,
+                        style: TextStyle(color: textColor)),
+                  ],
+                  // Timestamp
+                  Text(
+                    time,
+                    style: TextStyle(
+                      color: textColor.withValues(alpha: 0.65),
+                      fontSize: 10,
+                    ),
                   ),
                 ],
               ),

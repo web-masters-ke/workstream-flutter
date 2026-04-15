@@ -5,7 +5,7 @@ class ChatService {
   final _api = ApiService.instance;
 
   Future<List<ChatThread>> threads() async {
-    final r = await _api.get('/chat/threads');
+    final r = await _api.get('/communication/conversations');
     final data = unwrap<dynamic>(r);
     final list = data is List ? data : const <dynamic>[];
     return list
@@ -15,12 +15,20 @@ class ChatService {
   }
 
   Future<List<ChatMessage>> messages(
-    String threadId, {
+    String conversationId, {
     required String currentUserId,
   }) async {
-    final r = await _api.get('/chat/threads/$threadId/messages');
+    final r = await _api.get('/communication/conversations/$conversationId/messages');
     final data = unwrap<dynamic>(r);
-    final list = data is List ? data : const <dynamic>[];
+    // Backend returns { items: [...] } or a plain list
+    List<dynamic> list;
+    if (data is Map && data['items'] is List) {
+      list = data['items'] as List;
+    } else if (data is List) {
+      list = data;
+    } else {
+      list = const [];
+    }
     return list
         .whereType<Map>()
         .map(
@@ -33,13 +41,13 @@ class ChatService {
   }
 
   Future<ChatMessage> send(
-    String threadId,
+    String conversationId,
     String body, {
     required String currentUserId,
   }) async {
     final r = await _api.post(
-      '/chat/threads/$threadId/messages',
-      body: {'body': body},
+      '/communication/conversations/$conversationId/messages',
+      body: {'body': body, 'type': 'TEXT'},
     );
     final data = unwrap<Map<String, dynamic>>(r);
     return ChatMessage.fromJson(data, currentUserId: currentUserId);

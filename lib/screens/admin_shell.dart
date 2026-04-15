@@ -7,58 +7,50 @@ import 'package:provider/provider.dart';
 import '../config/constants.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/notifications_controller.dart';
-import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import 'admin_dashboard_screen.dart';
+import 'admin_tasks_screen.dart';
+import 'admin_team_screen.dart';
+import 'billing_screen.dart';
 import 'call_screen.dart';
 import 'chat_list_screen.dart';
 import 'disputes_list_screen.dart';
-import 'earnings_statement_screen.dart';
-import 'home_screen.dart';
+import 'jobs_screen.dart';
 import 'marketplace_screen.dart';
-import 'my_bids_screen.dart';
+import 'my_listings_screen.dart';
 import 'notifications_screen.dart';
-import 'performance_screen.dart';
 import 'profile_screen.dart';
+import 'reports_screen.dart';
 import 'shifts_screen.dart';
-import 'tasks_screen.dart';
-import 'wallet_screen.dart';
 
-class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+class AdminShell extends StatefulWidget {
+  const AdminShell({super.key});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  State<AdminShell> createState() => _AdminShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _AdminShellState extends State<AdminShell> {
   int _index = 0;
   bool _offline = false;
-  String? _globalError;
-  String? _availability; // ONLINE | OFFLINE | BUSY
 
   final _scaffoldKey = GlobalKey<ScaffoldState>();
-
   StreamSubscription<List<ConnectivityResult>>? _connectSub;
 
   static const _pages = [
-    HomeScreen(),
-    TasksScreen(),
-    MarketplaceScreen(),
+    AdminDashboardScreen(),
+    AdminTasksScreen(),
     ChatListScreen(),
-    WalletScreen(),
+    ProfileScreen(),
   ];
 
   @override
   void initState() {
     super.initState();
-    _connectSub = Connectivity()
-        .onConnectivityChanged
-        .listen(_onConnectivity);
-
+    _connectSub =
+        Connectivity().onConnectivityChanged.listen(_onConnectivity);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final user = context.read<AuthController>().user;
-      _availability = (user?.available ?? false) ? 'ONLINE' : 'OFFLINE';
       context.read<NotificationsController>().load();
     });
   }
@@ -78,28 +70,6 @@ class _MainShellState extends State<MainShell> {
     }
   }
 
-  void _showAvailabilitySheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => _AvailabilitySheet(
-        current: _availability ?? 'OFFLINE',
-        onSelected: (v) async {
-          setState(() => _availability = v);
-          try {
-            await ApiService.instance.patch('/agents/me', body: {
-              'availability': v,
-            });
-          } catch (_) {
-            // best-effort; UI already updated
-          }
-        },
-      ),
-    );
-  }
-
   void _openDrawer() => _scaffoldKey.currentState?.openDrawer();
 
   void _pushScreen(Widget screen) {
@@ -116,27 +86,18 @@ class _MainShellState extends State<MainShell> {
         ? AppColors.darkSubtext
         : AppColors.lightSubtext;
     final notif = context.watch<NotificationsController>();
-    final auth = context.watch<AuthController>();
-    final user = auth.user;
-
-    final avail = _availability ?? 'OFFLINE';
-    final availColor = avail == 'ONLINE'
-        ? AppColors.success
-        : avail == 'BUSY'
-            ? AppColors.warn
-            : subtext;
+    final user = context.watch<AuthController>().user;
 
     return Scaffold(
       key: _scaffoldKey,
-      drawer: _AgentDrawer(
+      drawer: _AdminDrawer(
         user: user,
         subtext: subtext,
         onPush: _pushScreen,
-        onClose: () => _scaffoldKey.currentState?.closeDrawer(),
       ),
       body: Column(
         children: [
-          // ── Offline banner ──────────────────────────────────
+          // ── Offline banner ────────────────────────────────────
           if (_offline)
             Material(
               color: AppColors.danger.withValues(alpha: 0.92),
@@ -165,47 +126,14 @@ class _MainShellState extends State<MainShell> {
               ),
             ),
 
-          // ── Global error banner ─────────────────────────────
-          if (_globalError != null)
-            Material(
-              color: AppColors.warn.withValues(alpha: 0.92),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning_amber_rounded,
-                        color: Colors.white, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _globalError!,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded,
-                          color: Colors.white, size: 16),
-                      padding: EdgeInsets.zero,
-                      onPressed: () =>
-                          setState(() => _globalError = null),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // ── Top bar (hamburger + workspace + availability + avatar) ─
+          // ── Top bar ───────────────────────────────────────────
           SafeArea(
             bottom: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(4, 8, 12, 0),
               child: Row(
                 children: [
-                  // Hamburger — opens agent drawer
+                  // Hamburger — opens admin drawer
                   IconButton(
                     icon: const Icon(Icons.menu_rounded),
                     onPressed: _openDrawer,
@@ -219,55 +147,64 @@ class _MainShellState extends State<MainShell> {
                     style: t.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w800),
                   ),
-                  const Spacer(),
-                  // Availability indicator
-                  GestureDetector(
-                    onTap: _showAvailabilitySheet,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: availColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                            color: availColor.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: availColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            avail,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: availColor,
-                            ),
-                          ),
-                        ],
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      'ADMIN',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: t.brightness == Brightness.dark
+                            ? AppColors.darkText
+                            : AppColors.primary,
+                        letterSpacing: 0.8,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  // Avatar — taps to profile
+                  const Spacer(),
+                  // Notification bell
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.notifications_outlined),
+                        onPressed: () => _pushScreen(
+                            const NotificationsScreen()),
+                      ),
+                      if (notif.unread > 0)
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.danger,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  // Avatar
                   GestureDetector(
-                    onTap: () => _pushScreen(const ProfileScreen()),
+                    onTap: () => setState(() => _index = 3),
                     child: CircleAvatar(
                       radius: 18,
                       backgroundColor:
-                          AppColors.accent.withValues(alpha: 0.18),
+                          AppColors.primary.withValues(alpha: 0.18),
                       child: Text(
-                        user?.initials ?? 'WS',
+                        user?.initials ?? 'AD',
                         style: const TextStyle(
-                          color: AppColors.accent,
+                          color: AppColors.primary,
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
                         ),
@@ -279,14 +216,14 @@ class _MainShellState extends State<MainShell> {
             ),
           ),
 
-          // ── Page content ────────────────────────────────────
+          // ── Page ─────────────────────────────────────────────
           Expanded(
             child: IndexedStack(index: _index, children: _pages),
           ),
         ],
       ),
 
-      // ── Bottom navigation ───────────────────────────────────────
+      // ── Bottom nav ─────────────────────────────────────────
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: t.scaffoldBackgroundColor,
@@ -302,7 +239,7 @@ class _MainShellState extends State<MainShell> {
               children: List.generate(_pages.length, (i) {
                 final data = _tabs[i];
                 final active = _index == i;
-                final isChat = i == 3;
+                final isChat = i == 2;
                 final badgeCount = isChat ? notif.unread : 0;
 
                 return Expanded(
@@ -358,7 +295,8 @@ class _MainShellState extends State<MainShell> {
                               fontWeight: active
                                   ? FontWeight.w700
                                   : FontWeight.w500,
-                              color: active ? AppColors.accent : subtext,
+                              color:
+                                  active ? AppColors.accent : subtext,
                             ),
                           ),
                         ],
@@ -375,11 +313,10 @@ class _MainShellState extends State<MainShell> {
   }
 
   static const _tabs = [
-    _Tab('Home',   Icons.home_outlined,                   Icons.home_rounded),
-    _Tab('Tasks',  Icons.assignment_outlined,             Icons.assignment_rounded),
-    _Tab('Market', Icons.storefront_outlined,             Icons.storefront_rounded),
-    _Tab('Chat',   Icons.chat_bubble_outline,             Icons.chat_bubble_rounded),
-    _Tab('Wallet', Icons.account_balance_wallet_outlined, Icons.account_balance_wallet_rounded),
+    _Tab('Dashboard', Icons.dashboard_outlined,  Icons.dashboard_rounded),
+    _Tab('Tasks',     Icons.assignment_outlined, Icons.assignment_rounded),
+    _Tab('Chat',      Icons.chat_bubble_outline, Icons.chat_bubble_rounded),
+    _Tab('Profile',   Icons.person_outline,      Icons.person_rounded),
   ];
 }
 
@@ -390,19 +327,17 @@ class _Tab {
   const _Tab(this.label, this.icon, this.activeIcon);
 }
 
-// ─── Agent Drawer ─────────────────────────────────────────────────────────────
+// ─── Admin Drawer ─────────────────────────────────────────────────────────────
 
-class _AgentDrawer extends StatelessWidget {
+class _AdminDrawer extends StatelessWidget {
   final dynamic user;
   final Color subtext;
   final void Function(Widget) onPush;
-  final VoidCallback onClose;
 
-  const _AgentDrawer({
+  const _AdminDrawer({
     required this.user,
     required this.subtext,
     required this.onPush,
-    required this.onClose,
   });
 
   @override
@@ -419,8 +354,7 @@ class _AgentDrawer extends StatelessWidget {
           children: [
             // Header
             Container(
-              padding:
-                  const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [AppColors.primaryDeep, AppColors.primarySoft],
@@ -434,11 +368,11 @@ class _AgentDrawer extends StatelessWidget {
                   CircleAvatar(
                     radius: 28,
                     backgroundColor:
-                        AppColors.accent.withValues(alpha: 0.2),
+                        AppColors.primary.withValues(alpha: 0.3),
                     child: Text(
-                      user?.initials ?? 'WS',
+                      user?.initials ?? 'AD',
                       style: const TextStyle(
-                        color: AppColors.accent,
+                        color: Colors.white,
                         fontWeight: FontWeight.w800,
                         fontSize: 18,
                       ),
@@ -446,7 +380,7 @@ class _AgentDrawer extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    user?.name ?? 'Agent',
+                    user?.name ?? 'Admin',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -467,19 +401,21 @@ class _AgentDrawer extends StatelessWidget {
 
             const SizedBox(height: 8),
 
-            _sectionLabel('Marketplace', subtext),
-            _item(context, Icons.storefront_outlined, 'Browse listings',
-                () => onPush(const MarketplaceScreen())),
-            _item(context, Icons.gavel_rounded, 'My Bids',
-                () => onPush(const MyBidsScreen())),
-
-            _sectionLabel('Work', subtext),
-            _item(context, Icons.schedule_rounded, 'My Shifts',
+            _sectionLabel('Jobs & Work', subtext),
+            _item(context, Icons.work_outline_rounded, 'Jobs',
+                () => onPush(const JobsScreen())),
+            _item(context, Icons.schedule_rounded, 'Shifts',
                 () => onPush(const ShiftsScreen())),
-            _item(context, Icons.task_alt_rounded, 'Earnings & Statement',
-                () => onPush(const EarningsStatementScreen())),
-            _item(context, Icons.trending_up_rounded, 'Performance',
-                () => onPush(const PerformanceScreen())),
+
+            _sectionLabel('Marketplace', subtext),
+            _item(context, Icons.storefront_outlined, 'Free Agents',
+                () => onPush(const MarketplaceScreen())),
+            _item(context, Icons.list_alt_rounded, 'My Listings',
+                () => onPush(const MyListingsScreen())),
+
+            _sectionLabel('Team', subtext),
+            _item(context, Icons.groups_outlined, 'Team Members',
+                () => onPush(const AdminTeamScreen())),
 
             _sectionLabel('Communication', subtext),
             _item(context, Icons.video_call_rounded, 'Calls', () {
@@ -488,9 +424,15 @@ class _AgentDrawer extends StatelessWidget {
             _item(context, Icons.notifications_outlined, 'Notifications',
                 () => onPush(const NotificationsScreen())),
 
-            _sectionLabel('Support', subtext),
+            _sectionLabel('Escalations & Reports', subtext),
             _item(context, Icons.report_outlined, 'Disputes / Escalations',
                 () => onPush(const DisputesListScreen())),
+            _item(context, Icons.bar_chart_rounded, 'Reports',
+                () => onPush(const ReportsScreen())),
+
+            _sectionLabel('Account', subtext),
+            _item(context, Icons.credit_card_rounded, 'Billing',
+                () => onPush(const BillingScreen())),
 
             const Divider(height: 24),
 
@@ -529,81 +471,4 @@ class _AgentDrawer extends StatelessWidget {
       horizontalTitleGap: 8,
     );
   }
-}
-
-// ─── Availability bottom sheet ───────────────────────────────────────────────
-
-class _AvailabilitySheet extends StatelessWidget {
-  final String current;
-  final ValueChanged<String> onSelected;
-  const _AvailabilitySheet(
-      {required this.current, required this.onSelected});
-
-  static const _options = [
-    _AvailOption('ONLINE', Icons.circle_rounded, AppColors.success,
-        'Available for tasks'),
-    _AvailOption('BUSY', Icons.do_not_disturb_on_rounded, AppColors.warn,
-        'Working — no new tasks'),
-    _AvailOption('OFFLINE', Icons.remove_circle_outline_rounded,
-        AppColors.lightSubtext, 'Not available'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: t.dividerColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text('Set availability',
-              style: t.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 12),
-          ..._options.map((opt) {
-            final active = current == opt.value;
-            return ListTile(
-              onTap: () {
-                onSelected(opt.value);
-                Navigator.pop(context);
-              },
-              leading: Icon(opt.icon, color: opt.color),
-              title: Text(opt.value,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text(opt.subtitle),
-              trailing: active
-                  ? const Icon(Icons.check_circle_rounded,
-                      color: AppColors.accent)
-                  : null,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              tileColor: active
-                  ? opt.color.withValues(alpha: 0.08)
-                  : null,
-            );
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-class _AvailOption {
-  final String value;
-  final IconData icon;
-  final Color color;
-  final String subtitle;
-  const _AvailOption(this.value, this.icon, this.color, this.subtitle);
 }

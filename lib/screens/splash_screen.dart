@@ -9,6 +9,7 @@ import '../controllers/auth_controller.dart';
 import '../services/push_service.dart';
 import '../services/realtime_service.dart';
 import '../theme/app_theme.dart';
+import 'admin_shell.dart';
 import 'login_screen.dart';
 import 'main_shell.dart';
 import 'onboarding_screen.dart';
@@ -47,8 +48,12 @@ class _SplashScreenState extends State<SplashScreen> {
       // fire-and-forget realtime + push registration
       unawaited(RealtimeService.instance.connect());
       unawaited(PushService.instance.init());
+      final isAdmin = auth.user?.isAdmin ?? false;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const MainShell()),
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              isAdmin ? const AdminShell() : const MainShell(),
+        ),
       );
     } else {
       Navigator.of(context).pushReplacement(
