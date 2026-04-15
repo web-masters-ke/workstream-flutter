@@ -304,7 +304,7 @@ class _DisputesListScreenState extends State<DisputesListScreen> {
                         crossAxisCount: 4,
                         crossAxisSpacing: 8,
                         mainAxisSpacing: 8,
-                        childAspectRatio: 0.85,
+                        childAspectRatio: 1.2,
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         children: [
