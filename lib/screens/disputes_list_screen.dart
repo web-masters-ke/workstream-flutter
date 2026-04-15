@@ -188,6 +188,26 @@ class _DisputesListScreenState extends State<DisputesListScreen> {
           e.slaRemaining!.startsWith('-'))
       .length;
 
+  Widget _miniStat(String label, int count, Color color) {
+    return Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$count',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20, color: color),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
   Color _statusColor(String s) {
     switch (s.toUpperCase()) {
       case 'RESOLVED':
@@ -299,130 +319,65 @@ class _DisputesListScreenState extends State<DisputesListScreen> {
                     padding:
                         const EdgeInsets.fromLTRB(16, 8, 16, 24),
                     children: [
-                      // ── Stats row ──
-                      GridView.count(
-                        crossAxisCount: 4,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                        childAspectRatio: 1.2,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        children: [
-                          StatTile(
-                            icon: Icons.warning_amber_rounded,
-                            label: 'Open',
-                            value: '$_openCount',
-                            color: AppColors.warn,
-                          ),
-                          StatTile(
-                            icon: Icons.check_circle_rounded,
-                            label: 'Resolved',
-                            value: '$_resolvedCount',
-                            color: AppColors.success,
-                          ),
-                          StatTile(
-                            icon: Icons.timer_off_rounded,
-                            label: 'Overdue',
-                            value: '$_overdueCount',
-                            color: AppColors.danger,
-                          ),
-                          StatTile(
-                            icon: Icons.list_alt_rounded,
-                            label: 'Total',
-                            value: '${_escalations.length}',
-                            color: AppColors.primary,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      // ── Status filter chips ──
-                      SizedBox(
-                        height: 38,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: _statusFilters.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(width: 8),
-                          itemBuilder: (_, i) {
-                            final f = _statusFilters[i];
-                            final active = f == _statusFilter;
-                            return GestureDetector(
-                              onTap: () =>
-                                  setState(() => _statusFilter = f),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 7),
-                                decoration: BoxDecoration(
-                                  color: active
-                                      ? AppColors.primary
-                                      : t.cardColor,
-                                  borderRadius:
-                                      BorderRadius.circular(999),
-                                  border: Border.all(
-                                      color: active
-                                          ? AppColors.primary
-                                          : t.dividerColor),
-                                ),
-                                child: Text(
-                                  f,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: active
-                                        ? Colors.white
-                                        : subtext,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
+                      // ── Stats row — compact inline ──
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                        child: Row(
+                          children: [
+                            _miniStat('Open', _openCount, AppColors.warn),
+                            _miniStat('Resolved', _resolvedCount, AppColors.success),
+                            _miniStat('Overdue', _overdueCount, AppColors.danger),
+                            _miniStat('Total', _escalations.length, AppColors.primary),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 8),
 
-                      // ── Priority filter chips ──
+                      // ── Filters — single scrollable row ──
                       SizedBox(
-                        height: 38,
-                        child: ListView.separated(
+                        height: 36,
+                        child: ListView(
                           scrollDirection: Axis.horizontal,
-                          itemCount: _priorityFilters.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(width: 8),
-                          itemBuilder: (_, i) {
-                            final f = _priorityFilters[i];
-                            final active = f == _priorityFilter;
-                            return GestureDetector(
-                              onTap: () => setState(
-                                  () => _priorityFilter = f),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 7),
-                                decoration: BoxDecoration(
-                                  color: active
-                                      ? _severityColor(f)
-                                          .withValues(alpha: 0.18)
-                                      : t.cardColor,
-                                  borderRadius:
-                                      BorderRadius.circular(999),
-                                  border: Border.all(
-                                      color: active
-                                          ? _severityColor(f)
-                                          : t.dividerColor),
-                                ),
-                                child: Text(
-                                  f,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: active
-                                        ? _severityColor(f)
-                                        : subtext,
+                          children: [
+                            ..._statusFilters.map((f) {
+                              final active = f == _statusFilter;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: GestureDetector(
+                                  onTap: () => setState(() => _statusFilter = f),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                    decoration: BoxDecoration(
+                                      color: active ? AppColors.primary : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(color: active ? AppColors.primary : t.dividerColor),
+                                    ),
+                                    child: Text(f, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: active ? Colors.white : subtext)),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            }),
+                            Container(width: 1, height: 24, color: t.dividerColor, margin: const EdgeInsets.symmetric(horizontal: 4)),
+                            ..._priorityFilters.map((f) {
+                              final active = f == _priorityFilter;
+                              final col = _severityColor(f);
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: GestureDetector(
+                                  onTap: () => setState(() => _priorityFilter = f),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                    decoration: BoxDecoration(
+                                      color: active ? col.withValues(alpha: 0.18) : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(color: active ? col : t.dividerColor),
+                                    ),
+                                    child: Text(f, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: active ? col : subtext)),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 12),
