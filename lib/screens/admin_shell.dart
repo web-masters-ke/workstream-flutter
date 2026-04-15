@@ -15,12 +15,15 @@ import 'billing_screen.dart';
 import 'call_screen.dart';
 import 'chat_list_screen.dart';
 import 'disputes_list_screen.dart';
+import 'help_screen.dart';
 import 'jobs_screen.dart';
 import 'marketplace_screen.dart';
 import 'my_listings_screen.dart';
 import 'notifications_screen.dart';
+import 'performance_screen.dart';
 import 'profile_screen.dart';
 import 'reports_screen.dart';
+import 'settings_screen.dart';
 import 'shifts_screen.dart';
 
 class AdminShell extends StatefulWidget {
@@ -380,7 +383,7 @@ class _AdminDrawer extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    user?.name ?? 'Admin',
+                    user?.fullName ?? 'Admin',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -401,43 +404,51 @@ class _AdminDrawer extends StatelessWidget {
 
             const SizedBox(height: 8),
 
-            _sectionLabel('Jobs & Work', subtext),
+            _sectionLabel('Operations', subtext),
             _item(context, Icons.work_outline_rounded, 'Jobs',
                 () => onPush(const JobsScreen())),
+            _item(context, Icons.task_alt_rounded, 'Tasks',
+                () => onPush(const AdminTasksScreen())),
+            _item(context, Icons.report_problem_outlined, 'Escalations',
+                () => onPush(const DisputesListScreen())),
+            _item(context, Icons.verified_outlined, 'Quality',
+                () => onPush(const PerformanceScreen())),
             _item(context, Icons.schedule_rounded, 'Shifts',
                 () => onPush(const ShiftsScreen())),
 
-            _sectionLabel('Marketplace', subtext),
+            _sectionLabel('People', subtext),
+            _item(context, Icons.groups_outlined, 'Agents & Team',
+                () => onPush(const AdminTeamScreen())),
             _item(context, Icons.storefront_outlined, 'Free Agents',
                 () => onPush(const MarketplaceScreen())),
             _item(context, Icons.list_alt_rounded, 'My Listings',
                 () => onPush(const MyListingsScreen())),
 
-            _sectionLabel('Team', subtext),
-            _item(context, Icons.groups_outlined, 'Team Members',
-                () => onPush(const AdminTeamScreen())),
-
             _sectionLabel('Communication', subtext),
+            _item(context, Icons.chat_bubble_outline_rounded, 'Inbox',
+                () => onPush(const ChatListScreen())),
             _item(context, Icons.video_call_rounded, 'Calls', () {
               onPush(const CallScreen(contactName: 'New call'));
             }),
             _item(context, Icons.notifications_outlined, 'Notifications',
                 () => onPush(const NotificationsScreen())),
 
-            _sectionLabel('Escalations & Reports', subtext),
-            _item(context, Icons.report_outlined, 'Disputes / Escalations',
-                () => onPush(const DisputesListScreen())),
+            _sectionLabel('Insights', subtext),
             _item(context, Icons.bar_chart_rounded, 'Reports',
                 () => onPush(const ReportsScreen())),
 
             _sectionLabel('Account', subtext),
             _item(context, Icons.credit_card_rounded, 'Billing',
                 () => onPush(const BillingScreen())),
+            _item(context, Icons.person_outline, 'Profile',
+                () => onPush(const ProfileScreen())),
+            _item(context, Icons.settings_outlined, 'Settings',
+                () => onPush(const SettingsScreen())),
 
             const Divider(height: 24),
 
-            _item(context, Icons.person_outline, 'Profile',
-                () => onPush(const ProfileScreen())),
+            _item(context, Icons.help_outline_rounded, 'Help',
+                () => onPush(const HelpScreen())),
           ],
         ),
       ),
