@@ -854,9 +854,9 @@ class _TopUpSheetState extends State<_TopUpSheet> {
     setState(() => _busy = true);
     try {
       final resp = await ApiService.instance.post('/wallet/topup', body: {
-        'amount': amount,
+        'amountCents': (amount * 100).round(),
         'phone': _phoneCtrl.text.trim(),
-        'method': _method,
+        'method': _method.toUpperCase(),
       });
       final data = unwrap<dynamic>(resp);
       _topUpRef = (data is Map ? data['reference']?.toString() : null) ??
