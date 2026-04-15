@@ -107,6 +107,7 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
   List<Map<String, dynamic>> _submissions = [];
   List<Map<String, dynamic>> _activity = [];
   List<Map<String, dynamic>> _messages = [];
+  String? _conversationId;
   bool _loading = true;
   String? _error;
   final _chatCtrl = TextEditingController();
@@ -138,15 +139,37 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
         ApiService.instance
             .get('/tasks/${widget.taskId}/activity')
             .catchError((_) => <String, dynamic>{'success': true, 'data': []}),
-        ApiService.instance
-            .get('/tasks/${widget.taskId}/messages')
-            .catchError((_) => <String, dynamic>{'success': true, 'data': []}),
       ]);
 
       final taskData = unwrap<Map<String, dynamic>>(results[0]);
       final subData = unwrap<dynamic>(results[1]);
       final actData = unwrap<dynamic>(results[2]);
-      final msgData = unwrap<dynamic>(results[3]);
+
+      // Find or create a conversation for this task
+      List<Map<String, dynamic>> messages = [];
+      try {
+        final convResp = await ApiService.instance.get('/communication/conversations');
+        final convRaw = unwrap<dynamic>(convResp);
+        final convList = convRaw is List ? convRaw : (convRaw is Map ? (convRaw['items'] ?? []) : []);
+        // Find conversation linked to this task
+        for (final c in convList) {
+          if (c is Map && c['taskId']?.toString() == widget.taskId) {
+            _conversationId = c['id']?.toString();
+            break;
+          }
+        }
+        // Load messages if conversation exists
+        if (_conversationId != null) {
+          final msgResp = await ApiService.instance
+              .get('/communication/conversations/$_conversationId/messages');
+          final msgData = unwrap<dynamic>(msgResp);
+          messages = _extractList(msgData, 'messages')
+              .whereType<Map<String, dynamic>>()
+              .toList();
+        }
+      } catch (_) {
+        // Chat not available — that's OK
+      }
 
       setState(() {
         _task = taskData;
@@ -156,9 +179,7 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
         _activity = _extractList(actData, 'activity')
             .whereType<Map<String, dynamic>>()
             .toList();
-        _messages = _extractList(msgData, 'messages')
-            .whereType<Map<String, dynamic>>()
-            .toList();
+        _messages = messages;
       });
     } catch (e) {
       setState(() => _error = cleanError(e));
@@ -205,14 +226,41 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
     if (text.isEmpty) return;
     setState(() => _sendingChat = true);
     try {
+      // Create conversation for this task if one doesn't exist
+      if (_conversationId == null) {
+        // Get assigned agent's userId to add as participant
+        final agentId = _task?['assignedAgentId']?.toString();
+        final participantIds = <String>[];
+        if (agentId != null && agentId.isNotEmpty) {
+          // The agent record has a userId field
+          try {
+            final agentResp = await ApiService.instance.get('/agents/$agentId');
+            final agentData = unwrap<Map<String, dynamic>>(agentResp);
+            final userId = agentData['userId']?.toString();
+            if (userId != null) participantIds.add(userId);
+          } catch (_) {}
+        }
+        final convResp = await ApiService.instance.post(
+          '/communication/conversations',
+          body: {
+            'type': 'DIRECT',
+            'title': _task?['title']?.toString() ?? 'Task chat',
+            'taskId': widget.taskId,
+            'participantUserIds': participantIds,
+          },
+        );
+        final convData = unwrap<Map<String, dynamic>>(convResp);
+        _conversationId = convData['id']?.toString();
+      }
+
       await ApiService.instance.post(
-        '/tasks/${widget.taskId}/messages',
+        '/communication/conversations/$_conversationId/messages',
         body: {'body': text},
       );
       _chatCtrl.clear();
       // Reload messages
-      final resp =
-          await ApiService.instance.get('/tasks/${widget.taskId}/messages');
+      final resp = await ApiService.instance
+          .get('/communication/conversations/$_conversationId/messages');
       final data = unwrap<dynamic>(resp);
       if (mounted) {
         setState(() {
