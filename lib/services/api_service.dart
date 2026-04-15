@@ -57,7 +57,33 @@ class ApiService {
           }
           handler.next(options);
         },
-        onError: (e, handler) {
+        onError: (e, handler) async {
+          if (e.response?.statusCode == 401) {
+            final refreshToken = await _readRefreshToken();
+            if (refreshToken != null && refreshToken.isNotEmpty) {
+              try {
+                final resp = await _dio.post<Map<String, dynamic>>(
+                  '/auth/refresh',
+                  data: {'refreshToken': refreshToken},
+                );
+                final body = resp.data;
+                final newToken = (body?['data'] is Map
+                        ? (body!['data'] as Map)['accessToken']
+                        : null)
+                    ?.toString();
+                if (newToken != null && newToken.isNotEmpty) {
+                  await setToken(newToken);
+                  e.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+                  final retried = await _dio.fetch<dynamic>(e.requestOptions);
+                  return handler.resolve(retried);
+                }
+              } catch (_) {
+                // refresh failed — clear tokens, let caller handle 401
+                await setToken(null);
+                await setRefreshToken(null);
+              }
+            }
+          }
           handler.next(e);
         },
       ),
@@ -74,12 +100,26 @@ class ApiService {
     return prefs.getString(PrefsKeys.auth);
   }
 
+  Future<String?> _readRefreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(PrefsKeys.refresh);
+  }
+
   Future<void> setToken(String? token) async {
     final prefs = await SharedPreferences.getInstance();
     if (token == null || token.isEmpty) {
       await prefs.remove(PrefsKeys.auth);
     } else {
       await prefs.setString(PrefsKeys.auth, token);
+    }
+  }
+
+  Future<void> setRefreshToken(String? token) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (token == null || token.isEmpty) {
+      await prefs.remove(PrefsKeys.refresh);
+    } else {
+      await prefs.setString(PrefsKeys.refresh, token);
     }
   }
 

@@ -101,11 +101,15 @@ class AuthService {
     final data = unwrap<Map<String, dynamic>>(resp);
     final token =
         data['token']?.toString() ?? data['accessToken']?.toString() ?? '';
+    final refreshToken = data['refreshToken']?.toString();
     final userMap = data['user'] is Map<String, dynamic>
         ? data['user'] as Map<String, dynamic>
         : data;
     final user = User.fromJson(userMap);
     await _api.setToken(token);
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      await _api.setRefreshToken(refreshToken);
+    }
     await _persistUser(user);
     return AuthResult(user, token);
   }

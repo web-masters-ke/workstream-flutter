@@ -39,7 +39,9 @@ class User {
       role == 'ADMIN' ||
       role == 'SUPER_ADMIN' ||
       role == 'MANAGER' ||
-      role == 'SUPERVISOR';
+      role == 'SUPERVISOR' ||
+      role == 'BUSINESS' ||
+      role == 'OWNER';
   String get initials {
     final a = firstName.isNotEmpty ? firstName[0] : '';
     final b = lastName.isNotEmpty ? lastName[0] : '';

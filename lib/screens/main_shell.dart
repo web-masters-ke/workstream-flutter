@@ -446,7 +446,7 @@ class _AgentDrawer extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    user?.name ?? 'Agent',
+                    user?.fullName ?? 'Agent',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
