@@ -458,10 +458,7 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
 
       // Upload image first if present
       if (image != null) {
-        setState(() {
-          _pendingImage = null;
-          _uploadingImage = true;
-        });
+        setState(() => _uploadingImage = true);
         await _uploadAndSendImage();
       }
 
