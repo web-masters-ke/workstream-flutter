@@ -1792,90 +1792,151 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
                                     ),
                             ],
                           )
-                        // ── Default state: normal input bar ─────────
+                        // ── Default state: clean input bar ──────────
                         : Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              // Attachment button
-                              IconButton(
-                                onPressed:
-                                    _uploadingImage ? null : _pickChatImage,
-                                icon: const Icon(
-                                    Icons.attach_file_rounded, size: 20),
-                                tooltip: 'Attach image',
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(
-                                    minWidth: 36, minHeight: 36),
-                              ),
-                              // Emoji button
-                              IconButton(
-                                onPressed: () {
-                                  setState(() =>
-                                      _showEmojiPicker = !_showEmojiPicker);
-                                },
-                                icon: Icon(
-                                  _showEmojiPicker
-                                      ? Icons.keyboard_rounded
-                                      : Icons.emoji_emotions_outlined,
-                                  size: 20,
-                                ),
-                                tooltip:
-                                    _showEmojiPicker ? 'Keyboard' : 'Emoji',
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(
-                                    minWidth: 36, minHeight: 36),
-                              ),
-                              // Mic button
-                              IconButton(
-                                onPressed: _startRecording,
-                                icon: const Icon(Icons.mic_rounded, size: 20),
-                                tooltip: 'Record voice note',
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(
-                                    minWidth: 36, minHeight: 36),
-                              ),
-                              // Text field
+                              // Text field with icons inside
                               Expanded(
-                                child: TextField(
-                                  controller: _chatCtrl,
-                                  decoration: const InputDecoration(
-                                    hintText: 'Type a message...',
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 10),
-                                    isDense: true,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? AppColors.darkSurface
+                                        : AppColors.lightBg,
+                                    borderRadius: BorderRadius.circular(24),
+                                    border: Border.all(
+                                      color: t.dividerColor,
+                                    ),
                                   ),
-                                  maxLines: 2,
-                                  minLines: 1,
-                                  textInputAction: TextInputAction.send,
-                                  onSubmitted: (_) => _sendMessage(),
-                                  onTap: () {
-                                    if (_showEmojiPicker) {
-                                      setState(
-                                          () => _showEmojiPicker = false);
-                                    }
-                                  },
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.end,
+                                    children: [
+                                      // Emoji toggle
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(left: 4, bottom: 4),
+                                        child: IconButton(
+                                          onPressed: () => setState(() =>
+                                              _showEmojiPicker =
+                                                  !_showEmojiPicker),
+                                          icon: Icon(
+                                            _showEmojiPicker
+                                                ? Icons.keyboard_rounded
+                                                : Icons
+                                                    .emoji_emotions_outlined,
+                                            size: 20,
+                                            color: subtext,
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          constraints:
+                                              const BoxConstraints(
+                                                  minWidth: 32,
+                                                  minHeight: 32),
+                                        ),
+                                      ),
+                                      // Text input
+                                      Expanded(
+                                        child: TextField(
+                                          controller: _chatCtrl,
+                                          decoration:
+                                              const InputDecoration(
+                                            hintText: 'Message...',
+                                            border: InputBorder.none,
+                                            contentPadding:
+                                                EdgeInsets.symmetric(
+                                                    horizontal: 4,
+                                                    vertical: 10),
+                                            isDense: true,
+                                          ),
+                                          maxLines: 4,
+                                          minLines: 1,
+                                          textInputAction:
+                                              TextInputAction.send,
+                                          onSubmitted: (_) =>
+                                              _sendMessage(),
+                                          onTap: () {
+                                            if (_showEmojiPicker) {
+                                              setState(() =>
+                                                  _showEmojiPicker =
+                                                      false);
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                      // Attachment
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                            bottom: 4),
+                                        child: IconButton(
+                                          onPressed: _uploadingImage
+                                              ? null
+                                              : _pickChatImage,
+                                          icon: Icon(
+                                              Icons.attach_file_rounded,
+                                              size: 20,
+                                              color: subtext),
+                                          padding: EdgeInsets.zero,
+                                          constraints:
+                                              const BoxConstraints(
+                                                  minWidth: 32,
+                                                  minHeight: 32),
+                                        ),
+                                      ),
+                                      // Mic
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                            right: 4, bottom: 4),
+                                        child: IconButton(
+                                          onPressed: _startRecording,
+                                          icon: Icon(
+                                              Icons.mic_rounded,
+                                              size: 20,
+                                              color: subtext),
+                                          padding: EdgeInsets.zero,
+                                          constraints:
+                                              const BoxConstraints(
+                                                  minWidth: 32,
+                                                  minHeight: 32),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 2),
-                              // Send button
+                              const SizedBox(width: 6),
+                              // Send button — circular
                               (_sendingChat || _uploadingImage)
-                                  ? const Padding(
-                                      padding: EdgeInsets.all(8),
-                                      child: SizedBox(
-                                        width: 18,
-                                        height: 18,
+                                  ? Container(
+                                      width: 42,
+                                      height: 42,
+                                      margin: const EdgeInsets.only(
+                                          bottom: 2),
+                                      alignment: Alignment.center,
+                                      child: const SizedBox(
+                                        width: 20,
+                                        height: 20,
                                         child: CircularProgressIndicator(
                                             strokeWidth: 2),
                                       ),
                                     )
-                                  : IconButton(
-                                      onPressed: _sendMessage,
-                                      icon: const Icon(Icons.send_rounded,
-                                          color: AppColors.primary,
-                                          size: 20),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                          minWidth: 36, minHeight: 36),
+                                  : Container(
+                                      margin: const EdgeInsets.only(
+                                          bottom: 2),
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.primary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: IconButton(
+                                        onPressed: _sendMessage,
+                                        icon: const Icon(
+                                            Icons.send_rounded,
+                                            color: Colors.white,
+                                            size: 18),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(
+                                            minWidth: 42, minHeight: 42),
+                                      ),
                                     ),
                             ],
                           ),
