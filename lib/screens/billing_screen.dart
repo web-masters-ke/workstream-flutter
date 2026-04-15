@@ -822,6 +822,9 @@ class _TopUpSheetState extends State<_TopUpSheet> {
   String _method = 'mpesa'; // mpesa | card
   final _amountCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController(text: '+254 ');
+  final _cardNumberCtrl = TextEditingController();
+  final _cardExpiryCtrl = TextEditingController();
+  final _cardCvvCtrl = TextEditingController();
   bool _busy = false;
   Timer? _pollTimer;
   String? _topUpRef;
@@ -832,6 +835,9 @@ class _TopUpSheetState extends State<_TopUpSheet> {
   void dispose() {
     _amountCtrl.dispose();
     _phoneCtrl.dispose();
+    _cardNumberCtrl.dispose();
+    _cardExpiryCtrl.dispose();
+    _cardCvvCtrl.dispose();
     _pollTimer?.cancel();
     super.dispose();
   }
@@ -1093,18 +1099,55 @@ class _TopUpSheetState extends State<_TopUpSheet> {
             icon: Icons.phone_outlined,
             keyboardType: TextInputType.phone,
           ),
+
+        if (_method == 'card') ...[
+          WsTextField(
+            controller: _cardNumberCtrl,
+            label: 'Card number',
+            hint: '4242 4242 4242 4242',
+            icon: Icons.credit_card_rounded,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: WsTextField(
+                  controller: _cardExpiryCtrl,
+                  label: 'Expiry',
+                  hint: 'MM/YY',
+                  icon: Icons.date_range_rounded,
+                  keyboardType: TextInputType.datetime,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: WsTextField(
+                  controller: _cardCvvCtrl,
+                  label: 'CVV',
+                  hint: '123',
+                  icon: Icons.lock_outline_rounded,
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 20),
 
-        FilledButton(
-          onPressed: _busy ? null : _submit,
-          child: _busy
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2.5, color: Colors.white),
-                )
-              : const Text('Top up'),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: _busy ? null : _submit,
+            child: _busy
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2.5, color: Colors.white),
+                  )
+                : Text(_method == 'mpesa' ? 'Top up via M-Pesa' : 'Pay with card'),
+          ),
         ),
       ],
     );
