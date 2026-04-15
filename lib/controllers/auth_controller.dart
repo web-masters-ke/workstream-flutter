@@ -70,6 +70,8 @@ class AuthController extends ChangeNotifier {
     required String email,
     required String phone,
     required String password,
+    String role = 'AGENT',
+    String? businessName,
   }) async {
     _busy = true;
     _error = null;
@@ -81,6 +83,8 @@ class AuthController extends ChangeNotifier {
         email: email,
         phone: phone,
         password: password,
+        role: role,
+        businessName: businessName,
       );
       _user = r.user;
       _status = AuthStatus.authenticated;

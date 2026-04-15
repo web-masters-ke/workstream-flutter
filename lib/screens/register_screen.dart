@@ -4,8 +4,12 @@ import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/primitives.dart';
+import 'admin_shell.dart';
 import 'main_shell.dart';
 import 'otp_verify_screen.dart';
+
+/// Account type toggle — shown at the top of the register form.
+enum _AccountType { agent, business }
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,26 +20,21 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+
+  // Shared fields
   final _first = TextEditingController();
   final _last = TextEditingController();
   final _email = TextEditingController();
   final _phone = TextEditingController();
   final _pw = TextEditingController();
   final _confirm = TextEditingController();
+
+  // Business-only
+  final _bizName = TextEditingController();
+
   bool _obscure = true;
   bool _terms = false;
-  String _category = 'customer-support';
-
-  static const _categories = [
-    'customer-support',
-    'sales',
-    'data-entry',
-    'social-media',
-    'research',
-    'moderation',
-    'telemarketing',
-    'other',
-  ];
+  _AccountType _type = _AccountType.agent;
 
   @override
   void dispose() {
@@ -45,6 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _phone.dispose();
     _pw.dispose();
     _confirm.dispose();
+    _bizName.dispose();
     super.dispose();
   }
 
@@ -57,12 +57,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
     final auth = context.read<AuthController>();
+    final isBusiness = _type == _AccountType.business;
     final ok = await auth.register(
       firstName: _first.text.trim(),
       lastName: _last.text.trim(),
       email: _email.text.trim(),
       phone: _phone.text.trim(),
       password: _pw.text,
+      role: isBusiness ? 'BUSINESS' : 'AGENT',
+      businessName: isBusiness ? _bizName.text.trim() : null,
     );
     if (!mounted) return;
     if (ok) {
@@ -77,8 +80,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
     } else {
       if (auth.status == AuthStatus.authenticated) {
+        final isAdmin = auth.user?.isAdmin ?? false;
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute<void>(builder: (_) => const MainShell()),
+          MaterialPageRoute<void>(
+            builder: (_) => isAdmin ? const AdminShell() : const MainShell(),
+          ),
           (_) => false,
         );
       } else {
@@ -93,9 +99,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final t = Theme.of(context);
-    final subtext = t.brightness == Brightness.dark
-        ? AppColors.darkSubtext
-        : AppColors.lightSubtext;
+    final isDark = t.brightness == Brightness.dark;
+    final subtext =
+        isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final isBusiness = _type == _AccountType.business;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Create account')),
@@ -114,19 +121,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Register as an agent and start earning.',
-                  style: t.textTheme.bodyMedium?.copyWith(color: subtext),
+                  isBusiness
+                      ? 'Create a business account to post tasks and hire agents.'
+                      : 'Register as a freelance agent and start earning.',
+                  style:
+                      t.textTheme.bodyMedium?.copyWith(color: subtext),
                 ),
                 const SizedBox(height: 20),
+
+                // ── Account type selector ──────────────────────────
+                _AccountTypeSelector(
+                  value: _type,
+                  onChanged: (v) => setState(() => _type = v),
+                ),
+                const SizedBox(height: 20),
+
+                // ── Business name (business only) ──────────────────
+                if (isBusiness) ...[
+                  WsTextField(
+                    controller: _bizName,
+                    label: 'Business / Organisation name',
+                    icon: Icons.business_outlined,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Business name is required'
+                        : null,
+                  ),
+                  const SizedBox(height: 14),
+                ],
+
+                // ── Name row ───────────────────────────────────────
                 Row(
                   children: [
                     Expanded(
                       child: WsTextField(
                         controller: _first,
-                        label: 'First name',
+                        label: isBusiness ? 'Contact first name' : 'First name',
                         icon: Icons.person_outline,
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Required'
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -134,13 +167,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: WsTextField(
                         controller: _last,
                         label: 'Last name',
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Required'
+                            : null,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 14),
+
                 WsTextField(
                   controller: _email,
                   label: 'Email',
@@ -154,6 +189,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 14),
+
                 WsTextField(
                   controller: _phone,
                   label: 'Phone number',
@@ -169,31 +205,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 14),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.only(left: 4, bottom: 6),
-                      child: Text('Category',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 13)),
-                    ),
-                    DropdownButtonFormField<String>(
-                      initialValue: _category,
-                      decoration: const InputDecoration(
-                        prefixIcon:
-                            Icon(Icons.category_outlined, size: 20),
-                      ),
-                      items: _categories
-                          .map((c) =>
-                              DropdownMenuItem(value: c, child: Text(c)))
-                          .toList(),
-                      onChanged: (v) =>
-                          setState(() => _category = v ?? 'General'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
+
+                // ── Password ───────────────────────────────────────
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -210,7 +223,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ? 'At least 6 characters'
                           : null,
                       decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                        prefixIcon:
+                            const Icon(Icons.lock_outline, size: 20),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscure
@@ -226,6 +240,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                 ),
                 const SizedBox(height: 14),
+
                 WsTextField(
                   controller: _confirm,
                   label: 'Confirm password',
@@ -237,17 +252,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
+
+                // ── Terms ──────────────────────────────────────────
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Checkbox(
                       value: _terms,
-                      onChanged: (v) => setState(() => _terms = v ?? false),
+                      onChanged: (v) =>
+                          setState(() => _terms = v ?? false),
                       activeColor: AppColors.accent,
                     ),
                     Expanded(
                       child: GestureDetector(
-                        onTap: () => setState(() => _terms = !_terms),
+                        onTap: () =>
+                            setState(() => _terms = !_terms),
                         child: Padding(
                           padding: const EdgeInsets.only(top: 12),
                           child: Text.rich(
@@ -280,6 +299,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
+
                 FilledButton(
                   onPressed: auth.busy ? null : _submit,
                   child: auth.busy
@@ -287,14 +307,152 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2.5, color: Colors.white),
+                              strokeWidth: 2.5,
+                              color: Colors.white),
                         )
-                      : const Text('Create account'),
+                      : Text(isBusiness
+                          ? 'Create business account'
+                          : 'Create agent account'),
                 ),
                 const SizedBox(height: 32),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Account type selector widget ────────────────────────────────────────────
+
+class _AccountTypeSelector extends StatelessWidget {
+  final _AccountType value;
+  final ValueChanged<_AccountType> onChanged;
+
+  const _AccountTypeSelector({
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final isDark = t.brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'I am joining as…',
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _TypeCard(
+                icon: Icons.person_rounded,
+                title: 'Agent',
+                subtitle: 'Find work & earn',
+                selected: value == _AccountType.agent,
+                isDark: isDark,
+                onTap: () => onChanged(_AccountType.agent),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _TypeCard(
+                icon: Icons.business_rounded,
+                title: 'Business',
+                subtitle: 'Post tasks & hire',
+                selected: value == _AccountType.business,
+                isDark: isDark,
+                onTap: () => onChanged(_AccountType.business),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _TypeCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _TypeCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = selected
+        ? AppColors.accent
+        : (isDark ? AppColors.darkBorder : AppColors.lightBorder);
+    final bgColor = selected
+        ? AppColors.accent.withValues(alpha: 0.08)
+        : (isDark ? AppColors.darkCard : AppColors.lightCard);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: bgColor,
+          border: Border.all(
+            color: borderColor,
+            width: selected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 22,
+                  color: selected ? AppColors.accent : (isDark ? AppColors.darkSubtext : AppColors.lightSubtext),
+                ),
+                const Spacer(),
+                if (selected)
+                  const Icon(Icons.check_circle_rounded,
+                      size: 18, color: AppColors.accent),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: selected
+                    ? AppColors.accent
+                    : (isDark ? AppColors.darkText : AppColors.lightText),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? AppColors.darkSubtext : AppColors.lightSubtext,
+              ),
+            ),
+          ],
         ),
       ),
     );

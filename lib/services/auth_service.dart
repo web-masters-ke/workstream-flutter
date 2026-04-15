@@ -32,18 +32,21 @@ class AuthService {
     required String email,
     required String phone,
     required String password,
+    String role = 'AGENT',
+    String? businessName,
   }) async {
-    final resp = await _api.post(
-      '/auth/register',
-      body: {
-        'firstName': firstName,
-        'lastName': lastName,
-        'email': email,
-        'phone': phone,
-        'password': password,
-        'role': 'AGENT',
-      },
-    );
+    final body = <String, dynamic>{
+      'firstName': firstName,
+      'lastName': lastName,
+      'email': email,
+      'phone': phone,
+      'password': password,
+      'role': role,
+    };
+    if (businessName != null && businessName.isNotEmpty) {
+      body['businessName'] = businessName;
+    }
+    final resp = await _api.post('/auth/register', body: body);
     return _consumeAuth(resp);
   }
 
