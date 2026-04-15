@@ -29,7 +29,7 @@ class _BillingWallet {
       total: bal,
       reserved: reserved,
       available: _d(j['available'] ?? (bal - reserved)),
-      currency: j['currency']?.toString() ?? 'KES',
+      currency: 'KES', // Always KES for East Africa market
     );
   }
 
