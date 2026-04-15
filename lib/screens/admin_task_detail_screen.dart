@@ -1,9 +1,15 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/primitives.dart';
+import 'call_screen.dart';
 
 // ─── Lightweight models for this screen ──────────────────────────────────────
 
@@ -181,7 +187,11 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
   bool _loading = true;
   String? _error;
   final _chatCtrl = TextEditingController();
+  final _chatScroll = ScrollController();
   bool _sendingChat = false;
+  bool _showEmojiPicker = false;
+  File? _pendingImage;
+  bool _uploadingImage = false;
 
   @override
   void initState() {
@@ -192,6 +202,7 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
   @override
   void dispose() {
     _chatCtrl.dispose();
+    _chatScroll.dispose();
     super.dispose();
   }
 
@@ -295,66 +306,39 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
 
   Future<void> _sendMessage() async {
     final text = _chatCtrl.text.trim();
-    if (text.isEmpty) return;
-    setState(() => _sendingChat = true);
+    final image = _pendingImage;
+    if (text.isEmpty && image == null) return;
+
+    setState(() {
+      _sendingChat = true;
+      _showEmojiPicker = false;
+    });
+
     try {
-      // Create conversation for this task if one doesn't exist
+      await _ensureConversation();
       if (_conversationId == null) {
-        final participantIds = <String>[];
-        // Get agent userId from the assignments array
-        final assignments = _task?['assignments'];
-        if (assignments is List) {
-          for (final a in assignments) {
-            final uid = a?['agent']?['userId']?.toString();
-            if (uid != null && uid.isNotEmpty) {
-              participantIds.add(uid);
-              break;
-            }
-          }
-        }
-        // Fallback: use createdById from task
-        if (participantIds.isEmpty) {
-          final cid = _task?['createdById']?.toString();
-          if (cid != null && cid.isNotEmpty) participantIds.add(cid);
-        }
-        // Last resort: use own userId
-        if (participantIds.isEmpty) {
-          try {
-            final me = unwrap<Map<String, dynamic>>(
-                await ApiService.instance.get('/auth/me'));
-            final myId = me['id']?.toString();
-            if (myId != null) participantIds.add(myId);
-          } catch (_) {}
-        }
-        final convResp = await ApiService.instance.post(
-          '/communication/conversations',
-          body: {
-            'type': 'DIRECT',
-            'title': _task?['title']?.toString() ?? 'Task chat',
-            'taskId': widget.taskId,
-            'participantUserIds': participantIds,
-          },
-        );
-        final convData = unwrap<Map<String, dynamic>>(convResp);
-        _conversationId = convData['id']?.toString();
+        throw ApiException('Could not create conversation');
       }
 
-      await ApiService.instance.post(
-        '/communication/conversations/$_conversationId/messages',
-        body: {'body': text},
-      );
-      _chatCtrl.clear();
-      // Reload messages
-      final resp = await ApiService.instance
-          .get('/communication/conversations/$_conversationId/messages');
-      final data = unwrap<dynamic>(resp);
-      if (mounted) {
+      // Upload image first if present
+      if (image != null) {
         setState(() {
-          _messages = _extractList(data, 'messages')
-              .whereType<Map<String, dynamic>>()
-              .toList();
+          _pendingImage = null;
+          _uploadingImage = true;
         });
+        await _uploadAndSendImage();
       }
+
+      // Send text message
+      if (text.isNotEmpty) {
+        await ApiService.instance.post(
+          '/communication/conversations/$_conversationId/messages',
+          body: {'body': text, 'type': 'TEXT'},
+        );
+        _chatCtrl.clear();
+      }
+
+      await _reloadMessages();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -365,8 +349,233 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
         ),
       );
     } finally {
-      if (mounted) setState(() => _sendingChat = false);
+      if (mounted) {
+        setState(() {
+          _sendingChat = false;
+          _uploadingImage = false;
+        });
+      }
     }
+  }
+
+  void _scrollChatToEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_chatScroll.hasClients) return;
+      _chatScroll.animateTo(
+        _chatScroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  Future<void> _pickChatImage() async {
+    final picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).dividerColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: const Text('Choose from gallery'),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded),
+                title: const Text('Take a photo'),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (source == null) return;
+    final picked = await picker.pickImage(source: source, imageQuality: 80);
+    if (picked == null || !mounted) return;
+    setState(() => _pendingImage = File(picked.path));
+  }
+
+  Future<void> _uploadAndSendImage() async {
+    final image = _pendingImage;
+    if (image == null) return;
+    setState(() {
+      _uploadingImage = true;
+      _pendingImage = null;
+    });
+    try {
+      // Ensure conversation exists
+      if (_conversationId == null) {
+        await _ensureConversation();
+      }
+      if (_conversationId == null) {
+        throw ApiException('Could not create conversation');
+      }
+
+      // Upload to /media/upload
+      final fileName = image.path.split('/').last;
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(image.path, filename: fileName),
+      });
+      final uploadResp = await ApiService.instance.dio.post(
+        '/media/upload',
+        data: formData,
+        queryParameters: {'kind': 'chat'},
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      final uploadData = uploadResp.data is Map<String, dynamic>
+          ? uploadResp.data as Map<String, dynamic>
+          : <String, dynamic>{};
+      final dataPayload = uploadData['data'];
+      final uploadedUrl = (dataPayload is Map
+              ? dataPayload['url']?.toString()
+              : null) ??
+          uploadData['url']?.toString() ??
+          '';
+
+      if (uploadedUrl.isEmpty) {
+        throw ApiException('Upload returned no URL');
+      }
+
+      // Send message with IMAGE type
+      await ApiService.instance.post(
+        '/communication/conversations/$_conversationId/messages',
+        body: {
+          'type': 'IMAGE',
+          'attachmentUrl': uploadedUrl,
+          'body': '',
+        },
+      );
+
+      // Reload messages
+      await _reloadMessages();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(cleanError(e)),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _uploadingImage = false);
+    }
+  }
+
+  /// Ensures _conversationId is set (creates one if needed).
+  Future<void> _ensureConversation() async {
+    if (_conversationId != null) return;
+    final participantIds = <String>[];
+    final assignments = _task?['assignments'];
+    if (assignments is List) {
+      for (final a in assignments) {
+        final uid = a?['agent']?['userId']?.toString();
+        if (uid != null && uid.isNotEmpty) {
+          participantIds.add(uid);
+          break;
+        }
+      }
+    }
+    if (participantIds.isEmpty) {
+      final cid = _task?['createdById']?.toString();
+      if (cid != null && cid.isNotEmpty) participantIds.add(cid);
+    }
+    if (participantIds.isEmpty) {
+      try {
+        final me = unwrap<Map<String, dynamic>>(
+            await ApiService.instance.get('/auth/me'));
+        final myId = me['id']?.toString();
+        if (myId != null) participantIds.add(myId);
+      } catch (_) {}
+    }
+    final convResp = await ApiService.instance.post(
+      '/communication/conversations',
+      body: {
+        'type': 'DIRECT',
+        'title': _task?['title']?.toString() ?? 'Task chat',
+        'taskId': widget.taskId,
+        'participantUserIds': participantIds,
+      },
+    );
+    final convData = unwrap<Map<String, dynamic>>(convResp);
+    _conversationId = convData['id']?.toString();
+  }
+
+  Future<void> _reloadMessages() async {
+    if (_conversationId == null) return;
+    final resp = await ApiService.instance
+        .get('/communication/conversations/$_conversationId/messages');
+    final data = unwrap<dynamic>(resp);
+    if (mounted) {
+      setState(() {
+        _messages = _extractList(data, 'messages')
+            .whereType<Map<String, dynamic>>()
+            .toList();
+      });
+      _scrollChatToEnd();
+    }
+  }
+
+  void _insertEmoji(String emoji) {
+    final text = _chatCtrl.text;
+    final sel = _chatCtrl.selection;
+    final start = sel.baseOffset >= 0 ? sel.baseOffset : text.length;
+    final end = sel.extentOffset >= 0 ? sel.extentOffset : text.length;
+    final newText = text.replaceRange(start, end, emoji);
+    _chatCtrl.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: start + emoji.length),
+    );
+  }
+
+  void _openCallScreen() {
+    final agentName = _task != null ? _agentNameFromTask(_task!) : 'Agent';
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CallScreen(contactName: agentName),
+      ),
+    );
+  }
+
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  bool _isImageUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.gif') ||
+        lower.endsWith('.webp');
   }
 
   void _showReassignSheet() {
@@ -938,12 +1147,16 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
     final content = sub['content']?.toString() ??
         sub['url']?.toString() ??
         '';
+    final fileUrl = sub['fileUrl']?.toString() ?? '';
     final notes = sub['notes']?.toString() ?? '';
     final subStatus = sub['status']?.toString().toUpperCase() ?? '';
     final reviewer = sub['reviewer'] is Map
         ? _agentNameFromMap(sub['reviewer'] as Map<String, dynamic>)
         : sub['reviewerName']?.toString();
     final createdAt = _parseDate(sub['createdAt']);
+
+    final hasFileUrl = fileUrl.isNotEmpty;
+    final isFileImage = hasFileUrl && _isImageUrl(fileUrl);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -1000,6 +1213,73 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
                 ),
             ],
           ),
+
+          // File attachment — image thumbnail or file link
+          if (hasFileUrl) ...[
+            const SizedBox(height: 10),
+            if (isFileImage)
+              GestureDetector(
+                onTap: () => _launchUrl(fileUrl),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    fileUrl,
+                    height: 120,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: subtext.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.broken_image_outlined, size: 32),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              GestureDetector(
+                onTap: () => _launchUrl(fileUrl),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.attach_file_rounded,
+                          size: 16, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          fileUrl.split('/').last,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.open_in_new_rounded,
+                          size: 14, color: AppColors.primary),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+
           if (content.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
@@ -1181,13 +1461,34 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
   // ─── Chat section ───────────────────────────────────────────────────────
 
   Widget _buildChatSection(ThemeData t, Color subtext, bool isDark) {
+    final agentName = _task != null ? _agentNameFromTask(_task!) : 'Agent';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(title: 'Chat (${_messages.length})'),
+        // Chat header with call button
+        Row(
+          children: [
+            Text(
+              'Chat (${_messages.length})',
+              style:
+                  t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const Spacer(),
+            IconButton(
+              onPressed: _openCallScreen,
+              icon: const Icon(Icons.call_rounded, size: 20),
+              tooltip: 'Call $agentName',
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.success.withValues(alpha: 0.12),
+                foregroundColor: AppColors.success,
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 8),
         Container(
-          constraints: const BoxConstraints(maxHeight: 350),
+          constraints: const BoxConstraints(maxHeight: 450),
           decoration: BoxDecoration(
             color: t.cardColor,
             borderRadius: BorderRadius.circular(14),
@@ -1209,6 +1510,7 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 260),
                   child: ListView.builder(
+                    controller: _chatScroll,
                     shrinkWrap: true,
                     padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
                     itemCount: _messages.length,
@@ -1216,14 +1518,79 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
                         _buildChatBubble(_messages[i], t, subtext, isDark),
                   ),
                 ),
-              // Input
+
+              // Pending image preview
+              if (_pendingImage != null)
+                Container(
+                  height: 80,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: t.dividerColor)),
+                  ),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          _pendingImage!,
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _pendingImage!.path.split('/').last,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, color: subtext),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 16),
+                        onPressed: () =>
+                            setState(() => _pendingImage = null),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // Input bar with attachment + emoji buttons
               Container(
-                padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
                 decoration: BoxDecoration(
                   border: Border(top: BorderSide(color: t.dividerColor)),
                 ),
                 child: Row(
                   children: [
+                    // Attachment button
+                    IconButton(
+                      onPressed: _uploadingImage ? null : _pickChatImage,
+                      icon: const Icon(Icons.attach_file_rounded, size: 20),
+                      tooltip: 'Attach image',
+                      padding: EdgeInsets.zero,
+                      constraints:
+                          const BoxConstraints(minWidth: 36, minHeight: 36),
+                    ),
+                    // Emoji button
+                    IconButton(
+                      onPressed: () {
+                        setState(
+                            () => _showEmojiPicker = !_showEmojiPicker);
+                      },
+                      icon: Icon(
+                        _showEmojiPicker
+                            ? Icons.keyboard_rounded
+                            : Icons.emoji_emotions_outlined,
+                        size: 20,
+                      ),
+                      tooltip: _showEmojiPicker ? 'Keyboard' : 'Emoji',
+                      padding: EdgeInsets.zero,
+                      constraints:
+                          const BoxConstraints(minWidth: 36, minHeight: 36),
+                    ),
+                    // Text field
                     Expanded(
                       child: TextField(
                         controller: _chatCtrl,
@@ -1238,24 +1605,40 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
                         minLines: 1,
                         textInputAction: TextInputAction.send,
                         onSubmitted: (_) => _sendMessage(),
+                        onTap: () {
+                          if (_showEmojiPicker) {
+                            setState(() => _showEmojiPicker = false);
+                          }
+                        },
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    IconButton(
-                      onPressed: _sendingChat ? null : _sendMessage,
-                      icon: _sendingChat
-                          ? const SizedBox(
+                    const SizedBox(width: 2),
+                    // Send button
+                    (_sendingChat || _uploadingImage)
+                        ? const Padding(
+                            padding: EdgeInsets.all(8),
+                            child: SizedBox(
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(
                                   strokeWidth: 2),
-                            )
-                          : const Icon(Icons.send_rounded,
-                              color: AppColors.primary, size: 22),
-                    ),
+                            ),
+                          )
+                        : IconButton(
+                            onPressed: _sendMessage,
+                            icon: const Icon(Icons.send_rounded,
+                                color: AppColors.primary, size: 20),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                                minWidth: 36, minHeight: 36),
+                          ),
                   ],
                 ),
               ),
+
+              // Emoji picker
+              if (_showEmojiPicker)
+                _AdminEmojiGrid(onEmojiSelected: _insertEmoji),
             ],
           ),
         ),
@@ -1276,6 +1659,8 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
         ? _agentNameFromMap(senderMap)
         : msg['senderName']?.toString() ?? '';
     final body = msg['body']?.toString() ?? msg['text']?.toString() ?? '';
+    final attachmentUrl = msg['attachmentUrl']?.toString() ?? '';
+    final msgType = msg['type']?.toString().toUpperCase() ?? 'TEXT';
     final ts = _parseDate(msg['createdAt'] ?? msg['timestamp']);
     final isAdmin = msg['isAdmin'] == true ||
         msg['senderRole']?.toString().toUpperCase() == 'ADMIN' ||
@@ -1284,6 +1669,10 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
     final bgColor = isAdmin
         ? AppColors.primary.withValues(alpha: 0.12)
         : (isDark ? AppColors.darkCard : const Color(0xFFF3F4F6));
+
+    final hasImage = attachmentUrl.isNotEmpty &&
+        (msgType == 'IMAGE' || _isImageUrl(attachmentUrl));
+    final hasFile = attachmentUrl.isNotEmpty && !hasImage;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -1312,7 +1701,60 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
               color: bgColor,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(body, style: const TextStyle(fontSize: 13)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Image attachment
+                if (hasImage) ...[
+                  GestureDetector(
+                    onTap: () => _launchUrl(attachmentUrl),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        attachmentUrl,
+                        width: 200,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                            Icons.broken_image_outlined,
+                            size: 40),
+                      ),
+                    ),
+                  ),
+                  if (body.isNotEmpty) const SizedBox(height: 6),
+                ],
+                // File attachment
+                if (hasFile) ...[
+                  GestureDetector(
+                    onTap: () => _launchUrl(attachmentUrl),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.attach_file_rounded,
+                            size: 14, color: AppColors.primary),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            attachmentUrl.split('/').last,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primary,
+                              decoration: TextDecoration.underline,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (body.isNotEmpty) const SizedBox(height: 6),
+                ],
+                // Body text
+                if (body.isNotEmpty)
+                  Text(body, style: const TextStyle(fontSize: 13)),
+              ],
+            ),
           ),
           if (ts != null)
             Padding(
@@ -1736,6 +2178,63 @@ class _ReviewSubmissionSheetState extends State<_ReviewSubmissionSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── Emoji Picker Grid (admin task chat) ────────────────────────────────────
+
+const _adminCommonEmojis = [
+  // Smileys
+  '\u{1F600}', '\u{1F602}', '\u{1F605}', '\u{1F60A}', '\u{1F60D}',
+  '\u{1F60E}', '\u{1F609}', '\u{1F617}', '\u{1F618}', '\u{1F61C}',
+  '\u{1F914}', '\u{1F60F}', '\u{1F612}', '\u{1F644}', '\u{1F62D}',
+  '\u{1F621}', '\u{1F92F}', '\u{1F631}', '\u{1F622}', '\u{1F62E}',
+  // Gestures
+  '\u{1F44D}', '\u{1F44E}', '\u{1F44F}', '\u{1F64F}', '\u{1F4AA}',
+  '\u{270C}\u{FE0F}', '\u{1F44B}', '\u{1F91D}', '\u{1F446}', '\u{1F447}',
+  // Objects & symbols
+  '\u{2764}\u{FE0F}', '\u{1F525}', '\u{1F389}', '\u{1F38A}', '\u{2705}',
+  '\u{274C}', '\u{2B50}', '\u{1F4A1}', '\u{1F4AC}', '\u{1F4E2}',
+  '\u{1F4C8}', '\u{1F680}', '\u{1F3AF}', '\u{1F4DD}', '\u{1F4BC}',
+  '\u{2708}\u{FE0F}', '\u{1F4B0}', '\u{1F4F1}', '\u{2615}', '\u{1F37A}',
+];
+
+class _AdminEmojiGrid extends StatelessWidget {
+  final void Function(String emoji) onEmojiSelected;
+  const _AdminEmojiGrid({required this.onEmojiSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Container(
+      height: 180,
+      decoration: BoxDecoration(
+        color: t.cardColor,
+        border: Border(top: BorderSide(color: t.dividerColor)),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(14),
+          bottomRight: Radius.circular(14),
+        ),
+      ),
+      child: GridView.builder(
+        padding: const EdgeInsets.all(10),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 8,
+          mainAxisSpacing: 4,
+          crossAxisSpacing: 4,
+        ),
+        itemCount: _adminCommonEmojis.length,
+        itemBuilder: (_, i) {
+          final emoji = _adminCommonEmojis[i];
+          return GestureDetector(
+            onTap: () => onEmojiSelected(emoji),
+            child: Center(
+              child: Text(emoji, style: const TextStyle(fontSize: 22)),
+            ),
+          );
+        },
       ),
     );
   }
