@@ -23,10 +23,12 @@ class _BillingWallet {
   });
 
   factory _BillingWallet.fromJson(Map<String, dynamic> j) {
+    final bal = _d(j['balance'] ?? j['total']);
+    final reserved = _d(j['reservedBalance'] ?? j['reserved'] ?? j['pending']);
     return _BillingWallet(
-      total: _d(j['total'] ?? j['balance']),
-      reserved: _d(j['reserved'] ?? j['pending']),
-      available: _d(j['available'] ?? j['balance']),
+      total: bal,
+      reserved: reserved,
+      available: _d(j['available'] ?? (bal - reserved)),
       currency: j['currency']?.toString() ?? 'KES',
     );
   }
@@ -116,6 +118,7 @@ class _BillingScreenState extends State<BillingScreen> {
   _BillingWallet _wallet = _BillingWallet.empty();
   List<_BillingTx> _transactions = [];
   bool _loading = true;
+  String? _error;
   String _txFilter = 'all';
   bool _autoRecharge = false;
   final _autoThresholdCtrl = TextEditingController(text: '500');
@@ -168,15 +171,15 @@ class _BillingScreenState extends State<BillingScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() { _loading = true; _error = null; });
     try {
       final walletResp = await ApiService.instance.get('/wallet');
       final walletData = unwrap<dynamic>(walletResp);
       if (walletData is Map<String, dynamic>) {
         _wallet = _BillingWallet.fromJson(walletData);
       }
-    } catch (_) {
-      // keep empty wallet
+    } catch (e) {
+      _error = cleanError(e);
     }
 
     try {
@@ -299,6 +302,19 @@ class _BillingScreenState extends State<BillingScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
                 children: [
+                  // ── Error banner ──
+                  if (_error != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.danger.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
+                    ),
+
                   // ── Balance cards row ──
                   Row(
                     children: [
