@@ -73,6 +73,7 @@ class ChatMessage {
   final String? senderName;
   final String body;
   final String? attachmentUrl;
+  final String type; // TEXT, IMAGE, FILE, VOICE, SYSTEM
   final DateTime createdAt;
   final bool mine;
 
@@ -83,9 +84,20 @@ class ChatMessage {
     this.senderName,
     required this.body,
     this.attachmentUrl,
+    this.type = 'TEXT',
     required this.createdAt,
     required this.mine,
   });
+
+  bool get isVoice {
+    if (type.toUpperCase() == 'VOICE') return true;
+    final url = (attachmentUrl ?? '').toLowerCase();
+    return url.endsWith('.m4a') ||
+        url.endsWith('.aac') ||
+        url.endsWith('.mp3') ||
+        url.endsWith('.wav') ||
+        url.endsWith('.ogg');
+  }
 
   factory ChatMessage.fromJson(
     Map<String, dynamic> json, {
@@ -106,6 +118,7 @@ class ChatMessage {
       senderName: senderName,
       body: json['body']?.toString() ?? '',
       attachmentUrl: json['attachmentUrl']?.toString(),
+      type: json['type']?.toString() ?? 'TEXT',
       createdAt:
           DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
           DateTime.now(),

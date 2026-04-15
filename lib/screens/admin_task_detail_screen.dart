@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:record/record.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
@@ -193,6 +195,15 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
   File? _pendingImage;
   bool _uploadingImage = false;
 
+  // Voice recording state
+  final AudioRecorder _recorder = AudioRecorder();
+  bool _isRecording = false;
+  int _recordingSeconds = 0;
+  Timer? _recordingTimer;
+  String? _recordedFilePath;
+  int _recordedDuration = 0; // seconds
+  bool _sendingVoice = false;
+
   @override
   void initState() {
     super.initState();
@@ -203,7 +214,132 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
   void dispose() {
     _chatCtrl.dispose();
     _chatScroll.dispose();
+    _recordingTimer?.cancel();
+    _recorder.dispose();
     super.dispose();
+  }
+
+  // ─── Voice recording helpers ──────────────────────────────────────────────
+
+  String _formatDuration(int totalSeconds) {
+    final m = (totalSeconds ~/ 60).toString().padLeft(2, '0');
+    final s = (totalSeconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  Future<void> _startRecording() async {
+    if (!await _recorder.hasPermission()) return;
+    final path =
+        '${Directory.systemTemp.path}/ws_voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    await _recorder.start(
+      const RecordConfig(encoder: AudioEncoder.aacLc),
+      path: path,
+    );
+    setState(() {
+      _isRecording = true;
+      _recordingSeconds = 0;
+      _recordedFilePath = null;
+      _recordedDuration = 0;
+    });
+    _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _recordingSeconds++);
+    });
+  }
+
+  Future<void> _stopRecording() async {
+    _recordingTimer?.cancel();
+    _recordingTimer = null;
+    final path = await _recorder.stop();
+    if (mounted) {
+      setState(() {
+        _isRecording = false;
+        _recordedFilePath = path;
+        _recordedDuration = _recordingSeconds;
+        _recordingSeconds = 0;
+      });
+    }
+  }
+
+  void _discardRecording() {
+    if (_recordedFilePath != null) {
+      try {
+        File(_recordedFilePath!).deleteSync();
+      } catch (_) {}
+    }
+    setState(() {
+      _recordedFilePath = null;
+      _recordedDuration = 0;
+    });
+  }
+
+  Future<void> _sendVoiceMessage() async {
+    final filePath = _recordedFilePath;
+    if (filePath == null) return;
+    setState(() => _sendingVoice = true);
+    try {
+      await _ensureConversation();
+      if (_conversationId == null) {
+        throw ApiException('Could not create conversation');
+      }
+      // Upload
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          filePath,
+          filename: 'voice_${DateTime.now().millisecondsSinceEpoch}.m4a',
+        ),
+      });
+      final uploadResp = await ApiService.instance.dio.post(
+        '/media/upload',
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      final uploadData = uploadResp.data is Map<String, dynamic>
+          ? uploadResp.data as Map<String, dynamic>
+          : <String, dynamic>{};
+      final dataPayload = uploadData['data'];
+      final uploadedUrl = (dataPayload is Map
+              ? dataPayload['url']?.toString()
+              : null) ??
+          uploadData['url']?.toString() ??
+          '';
+      if (uploadedUrl.isEmpty) {
+        throw ApiException('Upload returned no URL');
+      }
+      // Send VOICE message
+      await ApiService.instance.post(
+        '/communication/conversations/$_conversationId/messages',
+        body: {
+          'type': 'VOICE',
+          'attachmentUrl': uploadedUrl,
+          'body': '',
+        },
+      );
+      setState(() {
+        _recordedFilePath = null;
+        _recordedDuration = 0;
+      });
+      await _reloadMessages();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(cleanError(e)),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _sendingVoice = false);
+    }
+  }
+
+  bool _isVoiceUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.endsWith('.m4a') ||
+        lower.endsWith('.aac') ||
+        lower.endsWith('.mp3') ||
+        lower.endsWith('.wav') ||
+        lower.endsWith('.ogg');
   }
 
   Future<void> _loadAll() async {
@@ -1556,84 +1692,193 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
                   ),
                 ),
 
-              // Input bar with attachment + emoji buttons
+              // Input bar with attachment + emoji + mic buttons
               Container(
                 padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
                 decoration: BoxDecoration(
                   border: Border(top: BorderSide(color: t.dividerColor)),
                 ),
-                child: Row(
-                  children: [
-                    // Attachment button
-                    IconButton(
-                      onPressed: _uploadingImage ? null : _pickChatImage,
-                      icon: const Icon(Icons.attach_file_rounded, size: 20),
-                      tooltip: 'Attach image',
-                      padding: EdgeInsets.zero,
-                      constraints:
-                          const BoxConstraints(minWidth: 36, minHeight: 36),
-                    ),
-                    // Emoji button
-                    IconButton(
-                      onPressed: () {
-                        setState(
-                            () => _showEmojiPicker = !_showEmojiPicker);
-                      },
-                      icon: Icon(
-                        _showEmojiPicker
-                            ? Icons.keyboard_rounded
-                            : Icons.emoji_emotions_outlined,
-                        size: 20,
-                      ),
-                      tooltip: _showEmojiPicker ? 'Keyboard' : 'Emoji',
-                      padding: EdgeInsets.zero,
-                      constraints:
-                          const BoxConstraints(minWidth: 36, minHeight: 36),
-                    ),
-                    // Text field
-                    Expanded(
-                      child: TextField(
-                        controller: _chatCtrl,
-                        decoration: const InputDecoration(
-                          hintText: 'Type a message...',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 10),
-                          isDense: true,
-                        ),
-                        maxLines: 2,
-                        minLines: 1,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _sendMessage(),
-                        onTap: () {
-                          if (_showEmojiPicker) {
-                            setState(() => _showEmojiPicker = false);
-                          }
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 2),
-                    // Send button
-                    (_sendingChat || _uploadingImage)
-                        ? const Padding(
-                            padding: EdgeInsets.all(8),
-                            child: SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2),
+                child: _isRecording
+                    // ── Recording state: red strip ──────────────────
+                    ? Row(
+                        children: [
+                          const SizedBox(width: 8),
+                          _PulsingDot(),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Recording...',
+                            style: TextStyle(
+                              color: AppColors.danger,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
                             ),
-                          )
-                        : IconButton(
-                            onPressed: _sendMessage,
-                            icon: const Icon(Icons.send_rounded,
-                                color: AppColors.primary, size: 20),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                                minWidth: 36, minHeight: 36),
                           ),
-                  ],
-                ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _formatDuration(_recordingSeconds),
+                            style: TextStyle(
+                              color: AppColors.danger,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            onPressed: _stopRecording,
+                            icon: const Icon(Icons.stop_rounded,
+                                color: AppColors.danger, size: 28),
+                            tooltip: 'Stop recording',
+                          ),
+                        ],
+                      )
+                    : _recordedFilePath != null
+                        // ── Preview state: play + waveform + send ───
+                        ? Row(
+                            children: [
+                              IconButton(
+                                onPressed: () {
+                                  final uri = Uri.file(_recordedFilePath!);
+                                  launchUrl(uri);
+                                },
+                                icon: const Icon(Icons.play_arrow_rounded,
+                                    color: AppColors.primary, size: 24),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                    minWidth: 36, minHeight: 36),
+                                tooltip: 'Play',
+                              ),
+                              Expanded(child: _VoiceWaveform()),
+                              const SizedBox(width: 4),
+                              Text(
+                                _formatDuration(_recordedDuration),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: subtext,
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: _discardRecording,
+                                icon: const Icon(Icons.close_rounded,
+                                    size: 20),
+                                tooltip: 'Discard',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                    minWidth: 36, minHeight: 36),
+                              ),
+                              _sendingVoice
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(8),
+                                      child: SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
+                                      ),
+                                    )
+                                  : IconButton(
+                                      onPressed: _sendVoiceMessage,
+                                      icon: const Icon(
+                                          Icons.send_rounded,
+                                          color: AppColors.primary,
+                                          size: 20),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(
+                                          minWidth: 36, minHeight: 36),
+                                      tooltip: 'Send voice note',
+                                    ),
+                            ],
+                          )
+                        // ── Default state: normal input bar ─────────
+                        : Row(
+                            children: [
+                              // Attachment button
+                              IconButton(
+                                onPressed:
+                                    _uploadingImage ? null : _pickChatImage,
+                                icon: const Icon(
+                                    Icons.attach_file_rounded, size: 20),
+                                tooltip: 'Attach image',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                    minWidth: 36, minHeight: 36),
+                              ),
+                              // Emoji button
+                              IconButton(
+                                onPressed: () {
+                                  setState(() =>
+                                      _showEmojiPicker = !_showEmojiPicker);
+                                },
+                                icon: Icon(
+                                  _showEmojiPicker
+                                      ? Icons.keyboard_rounded
+                                      : Icons.emoji_emotions_outlined,
+                                  size: 20,
+                                ),
+                                tooltip:
+                                    _showEmojiPicker ? 'Keyboard' : 'Emoji',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                    minWidth: 36, minHeight: 36),
+                              ),
+                              // Mic button
+                              IconButton(
+                                onPressed: _startRecording,
+                                icon: const Icon(Icons.mic_rounded, size: 20),
+                                tooltip: 'Record voice note',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                    minWidth: 36, minHeight: 36),
+                              ),
+                              // Text field
+                              Expanded(
+                                child: TextField(
+                                  controller: _chatCtrl,
+                                  decoration: const InputDecoration(
+                                    hintText: 'Type a message...',
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 10),
+                                    isDense: true,
+                                  ),
+                                  maxLines: 2,
+                                  minLines: 1,
+                                  textInputAction: TextInputAction.send,
+                                  onSubmitted: (_) => _sendMessage(),
+                                  onTap: () {
+                                    if (_showEmojiPicker) {
+                                      setState(
+                                          () => _showEmojiPicker = false);
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              // Send button
+                              (_sendingChat || _uploadingImage)
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(8),
+                                      child: SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
+                                      ),
+                                    )
+                                  : IconButton(
+                                      onPressed: _sendMessage,
+                                      icon: const Icon(Icons.send_rounded,
+                                          color: AppColors.primary,
+                                          size: 20),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(
+                                          minWidth: 36, minHeight: 36),
+                                    ),
+                            ],
+                          ),
               ),
 
               // Emoji picker
@@ -1670,9 +1915,12 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
         ? AppColors.primary.withValues(alpha: 0.12)
         : (isDark ? AppColors.darkCard : const Color(0xFFF3F4F6));
 
-    final hasImage = attachmentUrl.isNotEmpty &&
+    final isVoice = msgType == 'VOICE' ||
+        (attachmentUrl.isNotEmpty && _isVoiceUrl(attachmentUrl));
+    final hasImage = !isVoice &&
+        attachmentUrl.isNotEmpty &&
         (msgType == 'IMAGE' || _isImageUrl(attachmentUrl));
-    final hasFile = attachmentUrl.isNotEmpty && !hasImage;
+    final hasFile = attachmentUrl.isNotEmpty && !hasImage && !isVoice;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -1705,8 +1953,36 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Voice note
+                if (isVoice) ...[
+                  GestureDetector(
+                    onTap: () {
+                      if (attachmentUrl.isNotEmpty) {
+                        _launchUrl(attachmentUrl);
+                      }
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.play_arrow_rounded,
+                            color: AppColors.primary, size: 22),
+                        const SizedBox(width: 6),
+                        _VoiceWaveform(compact: true),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Voice note',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: subtext,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ]
                 // Image attachment
-                if (hasImage) ...[
+                else if (hasImage) ...[
                   GestureDetector(
                     onTap: () => _launchUrl(attachmentUrl),
                     child: ClipRRect(
@@ -1722,9 +1998,9 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
                     ),
                   ),
                   if (body.isNotEmpty) const SizedBox(height: 6),
-                ],
+                ]
                 // File attachment
-                if (hasFile) ...[
+                else if (hasFile) ...[
                   GestureDetector(
                     onTap: () => _launchUrl(attachmentUrl),
                     child: Row(
@@ -1749,10 +2025,12 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
                     ),
                   ),
                   if (body.isNotEmpty) const SizedBox(height: 6),
-                ],
+                ]
                 // Body text
-                if (body.isNotEmpty)
-                  Text(body, style: const TextStyle(fontSize: 13)),
+                else ...[
+                  if (body.isNotEmpty)
+                    Text(body, style: const TextStyle(fontSize: 13)),
+                ],
               ],
             ),
           ),
@@ -2236,6 +2514,77 @@ class _AdminEmojiGrid extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+// ─── Pulsing red dot for recording indicator ────────────────────────────────
+
+class _PulsingDot extends StatefulWidget {
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          color: AppColors.danger.withValues(alpha: 0.4 + _ctrl.value * 0.6),
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Voice waveform placeholder (decorative bars) ───────────────────────────
+
+class _VoiceWaveform extends StatelessWidget {
+  final bool compact;
+  const _VoiceWaveform({this.compact = false});
+
+  static const _barHeights = [6.0, 12.0, 8.0, 16.0, 10.0, 14.0, 7.0, 13.0, 9.0, 15.0, 8.0, 11.0, 6.0, 14.0, 10.0];
+
+  @override
+  Widget build(BuildContext context) {
+    final bars = compact ? _barHeights.sublist(0, 10) : _barHeights;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: bars.map((h) {
+        return Container(
+          width: 3,
+          height: h,
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        );
+      }).toList(),
     );
   }
 }
