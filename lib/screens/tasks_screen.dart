@@ -240,7 +240,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               return ChoiceChip(
                 label: Text(_sortLabel(s)),
                 selected: active,
-                selectedColor: AppColors.accent.withValues(alpha: 0.18),
+                selectedColor: AppColors.primary.withValues(alpha: 0.18),
                 onSelected: (_) => setState(() => _s = s),
               );
             }).toList(),
@@ -263,7 +263,7 @@ class _FilterSheetState extends State<_FilterSheet> {
     return ChoiceChip(
       label: Text(label),
       selected: active,
-      selectedColor: AppColors.accent.withValues(alpha: 0.18),
+      selectedColor: AppColors.primary.withValues(alpha: 0.18),
       onSelected: (_) => setState(
         () => _f = _f.copyWith(category: c, clearCategory: c == null),
       ),

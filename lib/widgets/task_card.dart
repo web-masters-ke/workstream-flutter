@@ -47,7 +47,7 @@ class TaskCard extends StatelessWidget {
                 Text(
                   money.format(task.reward),
                   style: const TextStyle(
-                    color: AppColors.accent,
+                    color: AppColors.primary,
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
                   ),
@@ -100,8 +100,8 @@ class TaskCard extends StatelessWidget {
                 child: FilledButton.tonal(
                   onPressed: onAccept,
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.accent.withValues(alpha: 0.14),
-                    foregroundColor: AppColors.accent,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.14),
+                    foregroundColor: AppColors.primary,
                     minimumSize: const Size.fromHeight(38),
                     textStyle: const TextStyle(
                       fontWeight: FontWeight.w700,
@@ -129,7 +129,7 @@ class TaskCard extends StatelessWidget {
   Color _statusColor(TaskStatus s) {
     switch (s) {
       case TaskStatus.available:
-        return AppColors.accent;
+        return AppColors.primary;
       case TaskStatus.assigned:
         return AppColors.warn;
       case TaskStatus.inProgress:
@@ -175,18 +175,18 @@ class _CategoryBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.accent.withValues(alpha: 0.12),
+        color: AppColors.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: AppColors.accent),
+          Icon(icon, size: 12, color: AppColors.primary),
           const SizedBox(width: 4),
           Text(
             category.label,
             style: const TextStyle(
-              color: AppColors.accent,
+              color: AppColors.primary,
               fontWeight: FontWeight.w600,
               fontSize: 11,
             ),

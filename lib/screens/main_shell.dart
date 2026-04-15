@@ -212,7 +212,7 @@ class _MainShellState extends State<MainShell> {
                     tooltip: 'Menu',
                   ),
                   const Icon(Icons.bolt_rounded,
-                      color: AppColors.accent, size: 20),
+                      color: AppColors.primary, size: 20),
                   const SizedBox(width: 6),
                   Text(
                     AppMeta.name,
@@ -263,11 +263,11 @@ class _MainShellState extends State<MainShell> {
                     child: CircleAvatar(
                       radius: 18,
                       backgroundColor:
-                          AppColors.accent.withValues(alpha: 0.18),
+                          AppColors.primary.withValues(alpha: 0.18),
                       child: Text(
                         user?.initials ?? 'WS',
                         style: const TextStyle(
-                          color: AppColors.accent,
+                          color: AppColors.primary,
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
                         ),
@@ -321,7 +321,7 @@ class _MainShellState extends State<MainShell> {
                                 active ? data.activeIcon : data.icon,
                                 size: 22,
                                 color: active
-                                    ? AppColors.accent
+                                    ? AppColors.primary
                                     : subtext,
                               ),
                               if (badgeCount > 0)
@@ -358,7 +358,7 @@ class _MainShellState extends State<MainShell> {
                               fontWeight: active
                                   ? FontWeight.w700
                                   : FontWeight.w500,
-                              color: active ? AppColors.accent : subtext,
+                              color: active ? AppColors.primary : subtext,
                             ),
                           ),
                         ],
@@ -434,11 +434,11 @@ class _AgentDrawer extends StatelessWidget {
                   CircleAvatar(
                     radius: 28,
                     backgroundColor:
-                        AppColors.accent.withValues(alpha: 0.2),
+                        AppColors.primary.withValues(alpha: 0.2),
                     child: Text(
                       user?.initials ?? 'WS',
                       style: const TextStyle(
-                        color: AppColors.accent,
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w800,
                         fontSize: 18,
                       ),
@@ -520,7 +520,7 @@ class _AgentDrawer extends StatelessWidget {
   Widget _item(
       BuildContext context, IconData icon, String label, VoidCallback onTap) {
     return ListTile(
-      leading: Icon(icon, size: 20, color: AppColors.accent),
+      leading: Icon(icon, size: 20, color: AppColors.primary),
       title: Text(label,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
       onTap: onTap,
@@ -585,7 +585,7 @@ class _AvailabilitySheet extends StatelessWidget {
               subtitle: Text(opt.subtitle),
               trailing: active
                   ? const Icon(Icons.check_circle_rounded,
-                      color: AppColors.accent)
+                      color: AppColors.primary)
                   : null,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),

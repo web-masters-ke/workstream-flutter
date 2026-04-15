@@ -90,7 +90,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 alignment: Alignment.center,
                 child: const Icon(
                   Icons.bolt_rounded,
-                  color: AppColors.accent,
+                  color: AppColors.primary,
                   size: 44,
                 ),
               ),
@@ -118,7 +118,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 width: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation(AppColors.accent),
+                  valueColor: AlwaysStoppedAnimation(AppColors.primary),
                 ),
               ),
             ],

@@ -113,13 +113,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: const Text('Use dark colors throughout the app'),
             value: themeCtrl.isDark,
             onChanged: (_) => themeCtrl.toggle(),
-            activeThumbColor: AppColors.accent,
+            activeThumbColor: AppColors.primary,
           ),
           ListTile(
             title: const Text('Follow system theme'),
             trailing: Switch(
               value: themeCtrl.mode == ThemeMode.system,
-              activeThumbColor: AppColors.accent,
+              activeThumbColor: AppColors.primary,
               onChanged: (v) => themeCtrl.setMode(
                 v
                     ? ThemeMode.system
@@ -133,32 +133,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: const Text('New task push notifications'),
             value: _pushTasks,
             onChanged: (v) => setState(() => _pushTasks = v),
-            activeThumbColor: AppColors.accent,
+            activeThumbColor: AppColors.primary,
           ),
           SwitchListTile(
             title: const Text('Chat messages'),
             value: _pushChat,
             onChanged: (v) => setState(() => _pushChat = v),
-            activeThumbColor: AppColors.accent,
+            activeThumbColor: AppColors.primary,
           ),
           SwitchListTile(
             title: const Text('Payout updates'),
             value: _pushPayout,
             onChanged: (v) => setState(() => _pushPayout = v),
-            activeThumbColor: AppColors.accent,
+            activeThumbColor: AppColors.primary,
           ),
           const _SectionTitle('SMS & Email'),
           SwitchListTile(
             title: const Text('SMS task alerts'),
             value: _smsTasks,
             onChanged: (v) => setState(() => _smsTasks = v),
-            activeThumbColor: AppColors.accent,
+            activeThumbColor: AppColors.primary,
           ),
           SwitchListTile(
             title: const Text('Email weekly digest'),
             value: _emailDigest,
             onChanged: (v) => setState(() => _emailDigest = v),
-            activeThumbColor: AppColors.accent,
+            activeThumbColor: AppColors.primary,
           ),
           const _SectionTitle('Security'),
           ListTile(
@@ -179,7 +179,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         v ? 'MFA enabled (stub)' : 'MFA disabled (stub)')),
               );
             },
-            activeThumbColor: AppColors.accent,
+            activeThumbColor: AppColors.primary,
           ),
           const _SectionTitle('Language'),
           ListTile(
@@ -270,7 +270,7 @@ class _SectionTitle extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.8,
-          color: AppColors.accent,
+          color: AppColors.primary,
         ),
       ),
     );

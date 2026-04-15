@@ -101,16 +101,16 @@ class _PayoutScreenState extends State<PayoutScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.accent.withValues(alpha: 0.10),
+                color: AppColors.primary.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: AppColors.accent.withValues(alpha: 0.25),
+                  color: AppColors.primary.withValues(alpha: 0.25),
                 ),
               ),
               child: Row(
                 children: [
                   const Icon(Icons.account_balance_wallet_rounded,
-                      color: AppColors.accent),
+                      color: AppColors.primary),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(

@@ -216,11 +216,11 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             CircleAvatar(
               radius: 16,
-              backgroundColor: AppColors.accent.withValues(alpha: 0.18),
+              backgroundColor: AppColors.primary.withValues(alpha: 0.18),
               child: Text(
                 widget.title.isNotEmpty ? widget.title[0] : '?',
                 style: const TextStyle(
-                  color: AppColors.accent,
+                  color: AppColors.primary,
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
                 ),
@@ -403,8 +403,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       : Material(
                           color: (_input.text.isNotEmpty ||
                                   _pendingImage != null)
-                              ? AppColors.accent
-                              : AppColors.accent.withValues(alpha: 0.4),
+                              ? AppColors.primary
+                              : AppColors.primary.withValues(alpha: 0.4),
                           shape: const CircleBorder(),
                           child: InkWell(
                             customBorder: const CircleBorder(),
@@ -499,7 +499,7 @@ class _Bubble extends StatelessWidget {
     final t = Theme.of(context);
     final time = DateFormat('HH:mm').format(msg.createdAt);
     final bubbleColor = msg.mine
-        ? AppColors.accent
+        ? AppColors.primary
         : (t.brightness == Brightness.dark
             ? AppColors.darkCard
             : AppColors.lightCard);

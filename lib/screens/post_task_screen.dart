@@ -45,11 +45,11 @@ class _StepChip extends StatelessWidget {
             color: done
                 ? AppColors.success
                 : active
-                ? AppColors.accent
+                ? AppColors.primary
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: done ? AppColors.success : active ? AppColors.accent : subtext.withValues(alpha: 0.4),
+              color: done ? AppColors.success : active ? AppColors.primary : subtext.withValues(alpha: 0.4),
               width: 1.5,
             ),
           ),
@@ -301,9 +301,9 @@ class _PostTaskScreenState extends State<PostTaskScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                         decoration: BoxDecoration(
-                          color: active ? AppColors.accent : cardColor,
+                          color: active ? AppColors.primary : cardColor,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: active ? AppColors.accent : borderColor),
+                          border: Border.all(color: active ? AppColors.primary : borderColor),
                         ),
                         child: Text(
                           c,
@@ -378,7 +378,7 @@ class _PostTaskScreenState extends State<PostTaskScreen> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.add_rounded, size: 12, color: AppColors.accent),
+                                  Icon(Icons.add_rounded, size: 12, color: AppColors.primary),
                                   const SizedBox(width: 4),
                                   Text(s, style: TextStyle(fontSize: 12, color: subtext)),
                                 ],
@@ -422,17 +422,17 @@ class _PostTaskScreenState extends State<PostTaskScreen> {
                     children: _skills.map((s) => Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: AppColors.accent.withValues(alpha: 0.12),
+                        color: AppColors.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(s, style: const TextStyle(fontSize: 12, color: AppColors.accent, fontWeight: FontWeight.w600)),
+                          Text(s, style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600)),
                           const SizedBox(width: 6),
                           GestureDetector(
                             onTap: () => setState(() => _skills.remove(s)),
-                            child: const Icon(Icons.close_rounded, size: 14, color: AppColors.accent),
+                            child: const Icon(Icons.close_rounded, size: 14, color: AppColors.primary),
                           ),
                         ],
                       ),
@@ -465,13 +465,13 @@ class _PostTaskScreenState extends State<PostTaskScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                     decoration: BoxDecoration(
-                      border: Border.all(color: _dueAt != null ? AppColors.accent : borderColor),
+                      border: Border.all(color: _dueAt != null ? AppColors.primary : borderColor),
                       borderRadius: BorderRadius.circular(12),
                       color: isDark ? AppColors.darkSurface : Colors.white,
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.calendar_today_rounded, size: 18, color: _dueAt != null ? AppColors.accent : subtext),
+                        Icon(Icons.calendar_today_rounded, size: 18, color: _dueAt != null ? AppColors.primary : subtext),
                         const SizedBox(width: 10),
                         Text(
                           _dueAt != null ? _fmtDate(_dueAt!) : 'Pick a deadline',
@@ -541,13 +541,13 @@ class _PostTaskScreenState extends State<PostTaskScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                     decoration: BoxDecoration(
-                      border: Border.all(color: _expiresAt != null ? AppColors.accent : borderColor),
+                      border: Border.all(color: _expiresAt != null ? AppColors.primary : borderColor),
                       borderRadius: BorderRadius.circular(12),
                       color: isDark ? AppColors.darkSurface : Colors.white,
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.event_available_rounded, size: 18, color: _expiresAt != null ? AppColors.accent : subtext),
+                        Icon(Icons.event_available_rounded, size: 18, color: _expiresAt != null ? AppColors.primary : subtext),
                         const SizedBox(width: 10),
                         Text(
                           _expiresAt != null ? _fmtDate(_expiresAt!) : 'No expiry (stays open until closed)',
@@ -572,18 +572,18 @@ class _PostTaskScreenState extends State<PostTaskScreen> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.08),
+                    color: AppColors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.info_outline_rounded, color: AppColors.accent, size: 16),
+                          const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 16),
                           const SizedBox(width: 6),
-                          const Text('What happens next?', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.accent, fontSize: 13)),
+                          const Text('What happens next?', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary, fontSize: 13)),
                         ],
                       ),
                       const SizedBox(height: 8),

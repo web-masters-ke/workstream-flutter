@@ -122,7 +122,7 @@ class _NotifTile extends StatelessWidget {
               width: 8,
               height: 8,
               decoration: const BoxDecoration(
-                color: AppColors.accent,
+                color: AppColors.primary,
                 shape: BoxShape.circle,
               ),
             ),
@@ -146,7 +146,7 @@ class _NotifTile extends StatelessWidget {
   (IconData, Color) _iconFor(NotificationKind k) {
     switch (k) {
       case NotificationKind.task:
-        return (Icons.assignment_rounded, AppColors.accent);
+        return (Icons.assignment_rounded, AppColors.primary);
       case NotificationKind.chat:
         return (Icons.chat_bubble_rounded, AppColors.primary);
       case NotificationKind.wallet:

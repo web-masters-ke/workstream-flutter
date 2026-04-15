@@ -144,12 +144,12 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
           width: 64,
           height: 64,
           decoration: BoxDecoration(
-            color: AppColors.accent.withValues(alpha: 0.12),
+            color: AppColors.primary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(20),
           ),
           alignment: Alignment.center,
           child: const Icon(Icons.sms_outlined,
-              size: 32, color: AppColors.accent),
+              size: 32, color: AppColors.primary),
         ),
         const SizedBox(height: 20),
         Text(

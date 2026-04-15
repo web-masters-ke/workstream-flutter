@@ -256,7 +256,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       constraints: const BoxConstraints(),
                     ),
                   const SizedBox(width: 8),
-                  const Icon(Icons.bolt_rounded, color: AppColors.accent, size: 18),
+                  const Icon(Icons.bolt_rounded, color: AppColors.primary, size: 18),
                   const SizedBox(width: 4),
                   Text('WorkStream',
                       style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
@@ -321,7 +321,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             Checkbox(
               value: _terms,
               onChanged: (v) => setState(() => _terms = v ?? false),
-              activeColor: AppColors.accent,
+              activeColor: AppColors.primary,
             ),
             Expanded(
               child: GestureDetector(
@@ -333,10 +333,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     style: TextStyle(fontSize: 12, color: sub),
                     children: const [
                       TextSpan(text: 'Terms & Conditions',
-                          style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600)),
+                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
                       TextSpan(text: ' and '),
                       TextSpan(text: 'Privacy Policy',
-                          style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600)),
+                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
                     ],
                   )),
                 ),
@@ -443,7 +443,7 @@ class _StepIndicator extends StatelessWidget {
             final done = current > leftStep;
             return Expanded(child: Container(
               height: 2,
-              color: done ? AppColors.accent : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              color: done ? AppColors.primary : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
             ));
           }
           final step = i ~/ 2 + 1;
@@ -465,8 +465,8 @@ class _StepDot extends StatelessWidget {
   Widget build(BuildContext context) {
     Color bg;
     Color fg;
-    if (done) { bg = AppColors.accent; fg = Colors.white; }
-    else if (active) { bg = AppColors.accent.withValues(alpha: 0.15); fg = AppColors.accent; }
+    if (done) { bg = AppColors.primary; fg = Colors.white; }
+    else if (active) { bg = AppColors.primary.withValues(alpha: 0.15); fg = AppColors.primary; }
     else { bg = isDark ? AppColors.darkCard : AppColors.lightBorder; fg = isDark ? AppColors.darkSubtext : AppColors.lightSubtext; }
 
     return Column(
@@ -478,7 +478,7 @@ class _StepDot extends StatelessWidget {
           decoration: BoxDecoration(
             color: bg, shape: BoxShape.circle,
             border: Border.all(
-              color: active ? AppColors.accent.withValues(alpha: 0.5) : Colors.transparent,
+              color: active ? AppColors.primary.withValues(alpha: 0.5) : Colors.transparent,
               width: 1.5,
             ),
           ),
@@ -492,7 +492,7 @@ class _StepDot extends StatelessWidget {
             style: TextStyle(
               fontSize: 9,
               fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-              color: active ? AppColors.accent : (isDark ? AppColors.darkSubtext : AppColors.lightSubtext),
+              color: active ? AppColors.primary : (isDark ? AppColors.darkSubtext : AppColors.lightSubtext),
             )),
       ],
     );
@@ -550,10 +550,10 @@ class _TypeCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.accent.withValues(alpha: 0.08)
+              ? AppColors.primary.withValues(alpha: 0.08)
               : (isDark ? AppColors.darkCard : AppColors.lightCard),
           border: Border.all(
-            color: selected ? AppColors.accent : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+            color: selected ? AppColors.primary : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
             width: selected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(14),
@@ -561,14 +561,14 @@ class _TypeCard extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Icon(icon, size: 22,
-                color: selected ? AppColors.accent : (isDark ? AppColors.darkSubtext : AppColors.lightSubtext)),
+                color: selected ? AppColors.primary : (isDark ? AppColors.darkSubtext : AppColors.lightSubtext)),
             const Spacer(),
-            if (selected) const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.accent),
+            if (selected) const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.primary),
           ]),
           const SizedBox(height: 8),
           Text(title, style: TextStyle(
               fontWeight: FontWeight.w700, fontSize: 14,
-              color: selected ? AppColors.accent : (isDark ? AppColors.darkText : AppColors.lightText))),
+              color: selected ? AppColors.primary : (isDark ? AppColors.darkText : AppColors.lightText))),
           const SizedBox(height: 2),
           Text(subtitle, style: TextStyle(
               fontSize: 11,
@@ -643,12 +643,12 @@ class _BizStep2State extends State<_BizStep2> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.accent.withValues(alpha: 0.08),
+            color: AppColors.primary.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             'You\'re setting up your remote operations workspace. Post jobs, assign tasks with SLA timers, run QA reviews, track live performance, and pay out earnings — all from one dashboard.',
-            style: TextStyle(fontSize: 12, color: AppColors.accent.withValues(alpha: 0.9)),
+            style: TextStyle(fontSize: 12, color: AppColors.primary.withValues(alpha: 0.9)),
           ),
         ),
         const SizedBox(height: 16),
@@ -762,10 +762,10 @@ class _PlanCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.accent.withValues(alpha: 0.08)
+              ? AppColors.primary.withValues(alpha: 0.08)
               : (isDark ? AppColors.darkCard : AppColors.lightCard),
           border: Border.all(
-            color: selected ? AppColors.accent : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+            color: selected ? AppColors.primary : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
             width: selected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(16),
@@ -783,7 +783,7 @@ class _PlanCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppColors.accent, borderRadius: BorderRadius.circular(999)),
+                        color: AppColors.primary, borderRadius: BorderRadius.circular(999)),
                       child: const Text('Most popular',
                           style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
                     ),
@@ -791,7 +791,7 @@ class _PlanCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 RichText(text: TextSpan(children: [
                   TextSpan(text: plan.price,
-                      style: const TextStyle(color: AppColors.accent, fontSize: 18, fontWeight: FontWeight.w800)),
+                      style: const TextStyle(color: AppColors.primary, fontSize: 18, fontWeight: FontWeight.w800)),
                   TextSpan(text: '  ${plan.period}',
                       style: TextStyle(fontSize: 12,
                           color: isDark ? AppColors.darkSubtext : AppColors.lightSubtext)),
@@ -810,7 +810,7 @@ class _PlanCard extends StatelessWidget {
               ]),
             ),
             if (selected)
-              const Icon(Icons.check_circle_rounded, color: AppColors.accent, size: 22),
+              const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 22),
           ],
         ),
       ),
@@ -872,18 +872,18 @@ class _BizStep4 extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.accent.withValues(alpha: 0.08),
-            border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+            color: AppColors.primary.withValues(alpha: 0.08),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('PLAN', style: TextStyle(
                 fontSize: 10, fontWeight: FontWeight.w700,
-                letterSpacing: 1.2, color: AppColors.accent)),
+                letterSpacing: 1.2, color: AppColors.primary)),
             const SizedBox(height: 4),
             Text(plan.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             Text('${plan.price} ${plan.period}',
-                style: const TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.w600)),
+                style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600)),
           ]),
         ),
 
@@ -1055,7 +1055,7 @@ class _SignInLink extends StatelessWidget {
         style: const TextStyle(fontSize: 13),
         children: const [
           TextSpan(text: 'Sign in',
-              style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600)),
+              style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
         ],
       )),
     ),

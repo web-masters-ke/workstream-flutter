@@ -92,7 +92,7 @@ class _MyListingsScreenState extends State<MyListingsScreen>
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _error != null
               ? Center(
                   child: Column(
@@ -120,7 +120,7 @@ class _MyListingsScreenState extends State<MyListingsScreen>
                             const SizedBox(width: 8),
                             _StatCard(label: 'In review', value: '$pendingCount', color: AppColors.warn),
                             const SizedBox(width: 8),
-                            _StatCard(label: 'Total bids', value: '$totalBids', color: AppColors.accent),
+                            _StatCard(label: 'Total bids', value: '$totalBids', color: AppColors.primary),
                           ],
                         ),
                       ),
@@ -159,7 +159,7 @@ class _MyListingsScreenState extends State<MyListingsScreen>
                             );
                           }
                           return RefreshIndicator(
-                            color: AppColors.accent,
+                            color: AppColors.primary,
                             onRefresh: _load,
                             child: ListView.builder(
                               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -217,7 +217,7 @@ class _MyListingsScreenState extends State<MyListingsScreen>
           context,
           MaterialPageRoute(builder: (_) => const PostTaskScreen()),
         ).then((_) => _load()),
-        backgroundColor: AppColors.accent,
+        backgroundColor: AppColors.primary,
         child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
     );
@@ -331,7 +331,7 @@ class _ListingCard extends StatelessWidget {
                   const Spacer(),
                   Text(
                     'KES ${(listing.budgetCents ~/ 100).toStringAsFixed(0)}',
-                    style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800, color: AppColors.accent),
+                    style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800, color: AppColors.primary),
                   ),
                 ],
               ),
@@ -374,11 +374,11 @@ class _ListingCard extends StatelessWidget {
                 children: [
                   // Bids
                   Row(children: [
-                    Icon(Icons.gavel_rounded, size: 14, color: listing.totalBids > 0 ? AppColors.accent : subtext),
+                    Icon(Icons.gavel_rounded, size: 14, color: listing.totalBids > 0 ? AppColors.primary : subtext),
                     const SizedBox(width: 4),
                     Text(
                       '${listing.totalBids} bid${listing.totalBids != 1 ? 's' : ''}',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: listing.totalBids > 0 ? AppColors.accent : subtext),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: listing.totalBids > 0 ? AppColors.primary : subtext),
                     ),
                   ]),
                   if (listing.pendingBids > 0) ...[

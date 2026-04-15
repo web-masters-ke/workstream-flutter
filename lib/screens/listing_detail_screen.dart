@@ -133,15 +133,15 @@ class _BidFormSheetState extends State<_BidFormSheet> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.1),
+                      color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
                       children: [
-                        Text('Budget', style: TextStyle(fontSize: 10, color: AppColors.accent, fontWeight: FontWeight.w600)),
+                        Text('Budget', style: TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.w600)),
                         Text(
                           'KES ${(widget.listing.budgetCents ~/ 100).toString()}',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.accent),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.primary),
                         ),
                       ],
                     ),
@@ -410,10 +410,10 @@ class _BidTile extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundColor: AppColors.accent.withValues(alpha: 0.15),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
                   child: Text(
                     bid.agentName.isNotEmpty ? bid.agentName[0].toUpperCase() : '?',
-                    style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w800),
+                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -703,7 +703,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen>
     if (_loading) {
       return Scaffold(
         appBar: AppBar(leading: const BackButton()),
-        body: const Center(child: CircularProgressIndicator(color: AppColors.accent)),
+        body: const Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
     if (_error != null) {
@@ -741,12 +741,12 @@ class _ListingDetailScreenState extends State<ListingDetailScreen>
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: AppColors.accent.withValues(alpha: 0.12),
+                  color: AppColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   '${listing.bidCount} bids',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.accent),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary),
                 ),
               ),
             ),
@@ -774,14 +774,14 @@ class _ListingDetailScreenState extends State<ListingDetailScreen>
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        AppColors.accent.withValues(alpha: 0.12),
-                        AppColors.accent.withValues(alpha: 0.04),
+                        AppColors.primary.withValues(alpha: 0.12),
+                        AppColors.primary.withValues(alpha: 0.04),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -791,10 +791,10 @@ class _ListingDetailScreenState extends State<ListingDetailScreen>
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppColors.accent.withValues(alpha: 0.15),
+                            color: AppColors.primary.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(999),
                           ),
-                          child: Text(listing.category!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.accent)),
+                          child: Text(listing.category!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
                         ),
                       Text(listing.title, style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, height: 1.25)),
                       const SizedBox(height: 8),
@@ -819,7 +819,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen>
                             icon: Icons.attach_money_rounded,
                             label: 'Budget',
                             value: 'KES ${(listing.budgetCents ~/ 100).toStringAsFixed(0)}',
-                            valueColor: AppColors.accent,
+                            valueColor: AppColors.primary,
                           ),
                           _DetailStat(
                             icon: Icons.schedule_rounded,
@@ -947,7 +947,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen>
 
           // ── Tab 2: Bids ────────────────────────────────────
           _loadingBids
-              ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
+              ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
               : _bids.isEmpty
                   ? Center(
                       child: Column(
@@ -962,7 +962,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen>
                       ),
                     )
                   : RefreshIndicator(
-                      color: AppColors.accent,
+                      color: AppColors.primary,
                       onRefresh: _loadBids,
                       child: ListView(
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1000,7 +1000,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen>
       floatingActionButton: myBid == null && !hasAccepted
           ? FloatingActionButton.extended(
               onPressed: _openBidForm,
-              backgroundColor: AppColors.accent,
+              backgroundColor: AppColors.primary,
               icon: const Icon(Icons.gavel_rounded, color: Colors.white),
               label: const Text('Place bid', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
             )

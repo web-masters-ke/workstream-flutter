@@ -84,12 +84,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   CircleAvatar(
                     radius: 22,
-                    backgroundColor: AppColors.accent.withValues(alpha: 0.18),
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.18),
                     child: Text(
                       user?.initials ?? 'DA',
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: AppColors.accent,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
@@ -171,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: Icons.task_alt_rounded,
                       label: 'Tasks done',
                       value: '$tasksDone',
-                      color: AppColors.accent,
+                      color: AppColors.primary,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -209,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _QuickLink(
                     icon: Icons.insights_rounded,
                     label: 'Performance',
-                    color: AppColors.accent,
+                    color: AppColors.primary,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                           builder: (_) => const PerformanceScreen()),

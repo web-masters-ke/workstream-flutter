@@ -74,7 +74,7 @@ class _ShiftsScreenState extends State<ShiftsScreen> {
       case 'CANCELLED':
         return AppColors.danger;
       default:
-        return AppColors.accent; // SCHEDULED
+        return AppColors.primary; // SCHEDULED
     }
   }
 
@@ -154,7 +154,7 @@ class _ShiftsScreenState extends State<ShiftsScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.accent,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         onPressed: _showAddShift,
         icon: const Icon(Icons.add),
@@ -248,7 +248,7 @@ class _ShiftsScreenState extends State<ShiftsScreen> {
                                           style: TextStyle(
                                               fontSize: 11,
                                               color: isToday
-                                                  ? AppColors.accent
+                                                  ? AppColors.primary
                                                   : subtext,
                                               fontWeight: FontWeight.w600),
                                         ),
@@ -258,7 +258,7 @@ class _ShiftsScreenState extends State<ShiftsScreen> {
                                           height: 26,
                                           decoration: isToday
                                               ? const BoxDecoration(
-                                                  color: AppColors.accent,
+                                                  color: AppColors.primary,
                                                   shape: BoxShape.circle,
                                                 )
                                               : null,

@@ -85,15 +85,15 @@ class _TaskSubmitScreenState extends State<TaskSubmitScreen> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.accent.withValues(alpha: 0.10),
+                  color: AppColors.primary.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                      color: AppColors.accent.withValues(alpha: 0.25)),
+                      color: AppColors.primary.withValues(alpha: 0.25)),
                 ),
                 child: Row(
                   children: [
                     const Icon(Icons.assignment_turned_in_outlined,
-                        color: AppColors.accent, size: 22),
+                        color: AppColors.primary, size: 22),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(widget.task.title,

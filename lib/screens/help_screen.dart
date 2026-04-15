@@ -358,7 +358,7 @@ class _HelpScreenState extends State<HelpScreen> {
               children: [
                 _SupportTile(
                   icon: Icons.email_outlined,
-                  iconColor: AppColors.accent,
+                  iconColor: AppColors.primary,
                   title: 'Email support',
                   subtitle: AppMeta.supportEmail,
                   onTap: _launchEmail,
@@ -428,7 +428,7 @@ class _CategoryHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
       child: Row(
         children: [
-          Icon(cat.icon, size: 16, color: AppColors.accent),
+          Icon(cat.icon, size: 16, color: AppColors.primary),
           const SizedBox(width: 6),
           Text(
             cat.title.toUpperCase(),
@@ -467,7 +467,7 @@ class _FaqTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: expanded
-              ? AppColors.accent.withValues(alpha: 0.35)
+              ? AppColors.primary.withValues(alpha: 0.35)
               : t.dividerColor,
           width: expanded ? 1.5 : 1,
         ),

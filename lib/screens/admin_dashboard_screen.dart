@@ -137,7 +137,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           label: 'Agents',
           value: '$agents',
           icon: Icons.groups_rounded,
-          color: AppColors.accent,
+          color: AppColors.primary,
         ),
         _StatCard(
           label: 'Total Tasks',
@@ -187,8 +187,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     child: LinearProgressIndicator(
                       value: rate,
                       minHeight: 10,
-                      backgroundColor: AppColors.accent.withValues(alpha: 0.15),
-                      valueColor: const AlwaysStoppedAnimation(AppColors.accent),
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                      valueColor: const AlwaysStoppedAnimation(AppColors.primary),
                     ),
                   ),
                 ),
@@ -198,7 +198,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
-                    color: AppColors.accent,
+                    color: AppColors.primary,
                   ),
                 ),
               ],

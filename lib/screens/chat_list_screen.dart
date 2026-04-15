@@ -98,7 +98,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.8,
-          color: AppColors.accent,
+          color: AppColors.primary,
         ),
       ),
     );
@@ -129,11 +129,11 @@ class _ThreadTile extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 26,
-            backgroundColor: AppColors.accent.withValues(alpha: 0.18),
+            backgroundColor: AppColors.primary.withValues(alpha: 0.18),
             child: Text(
               thread.title.isNotEmpty ? thread.title[0] : '?',
               style: const TextStyle(
-                color: AppColors.accent,
+                color: AppColors.primary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -183,7 +183,7 @@ class _ThreadTile extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.accent,
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(

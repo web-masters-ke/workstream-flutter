@@ -66,7 +66,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 children: [
                   const Icon(
                     Icons.bolt_rounded,
-                    color: AppColors.accent,
+                    color: AppColors.primary,
                     size: 22,
                   ),
                   const SizedBox(width: 6),
@@ -99,7 +99,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   height: 6,
                   width: active ? 22 : 6,
                   decoration: BoxDecoration(
-                    color: active ? AppColors.accent : subtext.withValues(alpha: 0.3),
+                    color: active ? AppColors.primary : subtext.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 );
@@ -154,7 +154,7 @@ class _Slide extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.accent.withValues(alpha: 0.18),
+                  AppColors.primary.withValues(alpha: 0.18),
                   AppColors.primary.withValues(alpha: 0.22),
                 ],
                 begin: Alignment.topLeft,
@@ -162,7 +162,7 @@ class _Slide extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(32),
             ),
-            child: Icon(icon, size: 72, color: AppColors.accent),
+            child: Icon(icon, size: 72, color: AppColors.primary),
           ),
           const SizedBox(height: 32),
           Text(

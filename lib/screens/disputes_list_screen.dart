@@ -64,7 +64,7 @@ class _DisputesListScreenState extends State<DisputesListScreen> {
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(
-                  color: AppColors.accent, strokeWidth: 2.5),
+                  color: AppColors.primary, strokeWidth: 2.5),
             )
           : _error != null
               ? Center(
@@ -124,7 +124,7 @@ class _DisputeTile extends StatelessWidget {
         return AppColors.danger;
       case 'IN_REVIEW':
       case 'UNDER_REVIEW':
-        return AppColors.accent;
+        return AppColors.primary;
       default:
         return AppColors.warn;
     }

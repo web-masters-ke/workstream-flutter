@@ -4,35 +4,35 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/constants.dart';
 
-/// Brand palette for WorkStream — professional workforce app.
+/// Brand palette for WorkStream — mirrors the web Tailwind config exactly.
 ///
-/// Primary: deep navy. Accent: teal. Warn: amber. Danger: crimson.
+/// Primary: brand-600 terracotta (#a06030). Surfaces: zinc neutrals.
+/// Matches: tailwind brand-500/600/700 + zinc-50/200/800/900/950.
 class AppColors {
-  // Brand
-  static const primary = Color(0xFF0F2A47); // deep navy
-  static const primaryDeep = Color(0xFF081A2E);
-  static const primarySoft = Color(0xFF1D3E63);
-  static const accent = Color(0xFF14B8A6); // teal-500
-  static const accentDeep = Color(0xFF0E8F81);
-  static const warn = Color(0xFFF59E0B); // amber-500
-  static const danger = Color(0xFFDC2626); // red-600
-  static const success = Color(0xFF16A34A); // green-600
+  // Brand — matches web tailwind.config.js `brand` scale
+  static const primary     = Color(0xFFa06030); // brand-600 — CTAs, active nav, avatar
+  static const primaryDeep = Color(0xFF824c24); // brand-700 — hover / pressed
+  static const primarySoft = Color(0xFFc07830); // brand-500 — lighter tint
+  static const primaryFaint= Color(0xFFf8e8d0); // brand-100 — bg tints / badges
+  static const warn        = Color(0xFFF59E0B); // amber-500
+  static const danger      = Color(0xFFDC2626); // red-600
+  static const success     = Color(0xFF16A34A); // green-600
 
-  // Dark surfaces
-  static const darkBg = Color(0xFF0B1220);
-  static const darkSurface = Color(0xFF111A2C);
-  static const darkCard = Color(0xFF16233B);
-  static const darkBorder = Color(0xFF22314C);
-  static const darkText = Color(0xFFF4F6FA);
-  static const darkSubtext = Color(0xFF94A3B8);
+  // Dark surfaces — matches web zinc-950/900/800/700
+  static const darkBg      = Color(0xFF09090b); // zinc-950
+  static const darkSurface = Color(0xFF18181b); // zinc-900
+  static const darkCard    = Color(0xFF27272a); // zinc-800
+  static const darkBorder  = Color(0xFF3f3f46); // zinc-700
+  static const darkText    = Color(0xFFfafafa); // zinc-50
+  static const darkSubtext = Color(0xFFa1a1aa); // zinc-400
 
-  // Light surfaces
-  static const lightBg = Color(0xFFF4F6FA);
-  static const lightSurface = Color(0xFFFFFFFF);
-  static const lightCard = Color(0xFFFFFFFF);
-  static const lightBorder = Color(0xFFE2E8F0);
-  static const lightText = Color(0xFF0F172A);
-  static const lightSubtext = Color(0xFF64748B);
+  // Light surfaces — matches web zinc-50/white/200/500/900
+  static const lightBg      = Color(0xFFf9fafb); // zinc-50
+  static const lightSurface = Color(0xFFFFFFFF); // white
+  static const lightCard    = Color(0xFFFFFFFF); // white
+  static const lightBorder  = Color(0xFFe4e4e7); // zinc-200
+  static const lightText    = Color(0xFF18181b); // zinc-900
+  static const lightSubtext = Color(0xFF71717a); // zinc-500
 }
 
 class AppTheme {
@@ -41,9 +41,9 @@ class AppTheme {
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.darkBg,
       colorScheme: base.colorScheme.copyWith(
-        primary: AppColors.accent,
+        primary: AppColors.primary,
         onPrimary: Colors.white,
-        secondary: AppColors.accent,
+        secondary: AppColors.primary,
         surface: AppColors.darkSurface,
         onSurface: AppColors.darkText,
         error: AppColors.danger,
@@ -81,7 +81,7 @@ class AppTheme {
       elevatedButtonTheme: _primaryButton(),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.accent,
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(52),
           shape: RoundedRectangleBorder(
@@ -95,9 +95,9 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.accent,
+          foregroundColor: AppColors.primary,
           minimumSize: const Size.fromHeight(52),
-          side: const BorderSide(color: AppColors.accent),
+          side: const BorderSide(color: AppColors.primary),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -105,11 +105,11 @@ class AppTheme {
         ),
       ),
       tabBarTheme: const TabBarThemeData(
-        labelColor: AppColors.accent,
+        labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.darkSubtext,
         indicatorSize: TabBarIndicatorSize.label,
         indicator: UnderlineTabIndicator(
-          borderSide: BorderSide(color: AppColors.accent, width: 2.5),
+          borderSide: BorderSide(color: AppColors.primary, width: 2.5),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
@@ -127,7 +127,7 @@ class AppTheme {
       colorScheme: base.colorScheme.copyWith(
         primary: AppColors.primary,
         onPrimary: Colors.white,
-        secondary: AppColors.accent,
+        secondary: AppColors.primarySoft,
         surface: AppColors.lightSurface,
         onSurface: AppColors.lightText,
         error: AppColors.danger,
@@ -227,7 +227,7 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+        borderSide: const BorderSide(color: AppColors.primarySoft, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -239,7 +239,7 @@ class AppTheme {
   static ElevatedButtonThemeData _primaryButton() {
     return ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.accent,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         minimumSize: const Size.fromHeight(52),

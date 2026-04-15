@@ -85,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: ListView(
               children: [
                 const SizedBox(height: 32),
-                const Icon(Icons.bolt_rounded, color: AppColors.accent, size: 40),
+                const Icon(Icons.bolt_rounded, color: AppColors.primary, size: 40),
                 const SizedBox(height: 16),
                 Text(
                   'Welcome back',
@@ -221,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: active ? AppColors.accent.withValues(alpha: 0.15) : null,
+            color: active ? AppColors.primary.withValues(alpha: 0.15) : null,
             borderRadius: BorderRadius.circular(9),
           ),
           alignment: Alignment.center,
@@ -229,7 +229,7 @@ class _LoginScreenState extends State<LoginScreen> {
             label,
             style: TextStyle(
               fontWeight: FontWeight.w700,
-              color: active ? AppColors.accent : null,
+              color: active ? AppColors.primary : null,
             ),
           ),
         ),

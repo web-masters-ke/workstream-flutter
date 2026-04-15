@@ -82,7 +82,7 @@ class _MyBidsScreenState extends State<MyBidsScreen>
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _error != null
               ? Center(
                   child: Column(
@@ -137,7 +137,7 @@ class _MyBidsScreenState extends State<MyBidsScreen>
                             _StatCard(
                               label: 'Win rate',
                               value: _bids.isNotEmpty ? '${(accepted / _bids.length * 100).round()}%' : '—',
-                              color: AppColors.accent,
+                              color: AppColors.primary,
                             ),
                           ],
                         ),
@@ -169,7 +169,7 @@ class _MyBidsScreenState extends State<MyBidsScreen>
                             );
                           }
                           return RefreshIndicator(
-                            color: AppColors.accent,
+                            color: AppColors.primary,
                             onRefresh: _load,
                             child: ListView.builder(
                               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -294,7 +294,7 @@ class _BidCard extends StatelessWidget {
                   const Spacer(),
                   Text(
                     'KES ${(bid.proposedCents ~/ 100).toStringAsFixed(0)}',
-                    style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800, color: AppColors.accent),
+                    style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800, color: AppColors.primary),
                   ),
                 ],
               ),

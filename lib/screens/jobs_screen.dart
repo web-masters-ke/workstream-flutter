@@ -60,7 +60,7 @@ class _JobsScreenState extends State<JobsScreen> {
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(
-                  color: AppColors.accent, strokeWidth: 2.5),
+                  color: AppColors.primary, strokeWidth: 2.5),
             )
           : _error != null
               ? Center(
@@ -138,11 +138,11 @@ class _JobCard extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.12),
+                    color: AppColors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.work_rounded,
-                      color: AppColors.accent, size: 20),
+                      color: AppColors.primary, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -195,7 +195,7 @@ class _JobCard extends StatelessWidget {
     switch (status.toUpperCase()) {
       case 'ACTIVE':
       case 'IN_PROGRESS':
-        return AppColors.accent;
+        return AppColors.primary;
       case 'COMPLETED':
         return AppColors.success;
       case 'CANCELLED':

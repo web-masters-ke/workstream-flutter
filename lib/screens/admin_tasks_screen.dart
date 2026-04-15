@@ -126,9 +126,9 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
             padding: const EdgeInsets.only(right: 8),
             child: Chip(
               label: Text('${_tasks.length}'),
-              backgroundColor: AppColors.accent.withValues(alpha: 0.12),
+              backgroundColor: AppColors.primary.withValues(alpha: 0.12),
               labelStyle: const TextStyle(
-                  color: AppColors.accent, fontWeight: FontWeight.w700),
+                  color: AppColors.primary, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -153,13 +153,13 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
                     setState(() => _statusFilter = s);
                     _load();
                   },
-                  selectedColor: AppColors.accent.withValues(alpha: 0.18),
-                  checkmarkColor: AppColors.accent,
+                  selectedColor: AppColors.primary.withValues(alpha: 0.18),
+                  checkmarkColor: AppColors.primary,
                   labelStyle: TextStyle(
                     fontWeight:
                         active ? FontWeight.w700 : FontWeight.w500,
                     fontSize: 12,
-                    color: active ? AppColors.accent : subtext,
+                    color: active ? AppColors.primary : subtext,
                   ),
                 );
               },
@@ -325,7 +325,7 @@ class _TaskTile extends StatelessWidget {
         return (AppColors.success,
             AppColors.success.withValues(alpha: 0.12));
       case 'IN_PROGRESS':
-        return (AppColors.accent, AppColors.accent.withValues(alpha: 0.12));
+        return (AppColors.primary, AppColors.primary.withValues(alpha: 0.12));
       case 'CANCELLED':
         return (AppColors.danger, AppColors.danger.withValues(alpha: 0.12));
       default:

@@ -140,7 +140,7 @@ class _AdminShellState extends State<AdminShell> {
                     tooltip: 'Menu',
                   ),
                   const Icon(Icons.bolt_rounded,
-                      color: AppColors.accent, size: 20),
+                      color: AppColors.primary, size: 20),
                   const SizedBox(width: 6),
                   Text(
                     AppMeta.name,
@@ -258,7 +258,7 @@ class _AdminShellState extends State<AdminShell> {
                                 active ? data.activeIcon : data.icon,
                                 size: 22,
                                 color: active
-                                    ? AppColors.accent
+                                    ? AppColors.primary
                                     : subtext,
                               ),
                               if (badgeCount > 0)
@@ -296,7 +296,7 @@ class _AdminShellState extends State<AdminShell> {
                                   ? FontWeight.w700
                                   : FontWeight.w500,
                               color:
-                                  active ? AppColors.accent : subtext,
+                                  active ? AppColors.primary : subtext,
                             ),
                           ),
                         ],
@@ -462,7 +462,7 @@ class _AdminDrawer extends StatelessWidget {
   Widget _item(
       BuildContext context, IconData icon, String label, VoidCallback onTap) {
     return ListTile(
-      leading: Icon(icon, size: 20, color: AppColors.accent),
+      leading: Icon(icon, size: 20, color: AppColors.primary),
       title: Text(label,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
       onTap: onTap,

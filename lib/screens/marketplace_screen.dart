@@ -52,7 +52,7 @@ class _ListingCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: AppColors.accent.withValues(alpha: 0.08),
+                color: AppColors.primary.withValues(alpha: 0.08),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: Row(
@@ -61,7 +61,7 @@ class _ListingCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppColors.accent.withValues(alpha: 0.15),
+                        color: AppColors.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
@@ -69,7 +69,7 @@ class _ListingCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.accent,
+                          color: AppColors.primary,
                         ),
                       ),
                     ),
@@ -80,7 +80,7 @@ class _ListingCard extends StatelessWidget {
                     _fmtMoney(listing.budgetCents, listing.currency),
                     style: t.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: AppColors.accent,
+                      color: AppColors.primary,
                     ),
                   ),
                 ],
@@ -153,7 +153,7 @@ class _ListingCard extends StatelessWidget {
                       _StatChip(
                         icon: Icons.gavel_rounded,
                         label: '${listing.bidCount} bids',
-                        color: AppColors.accent,
+                        color: AppColors.primary,
                       ),
                       const SizedBox(width: 8),
                       _StatChip(
@@ -272,9 +272,9 @@ class _FilterSheetState extends State<_FilterSheet> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: active ? AppColors.accent : Colors.transparent,
+                    color: active ? AppColors.primary : Colors.transparent,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: active ? AppColors.accent : borderColor),
+                    border: Border.all(color: active ? AppColors.primary : borderColor),
                   ),
                   child: Text(
                     opt.$2,
@@ -302,9 +302,9 @@ class _FilterSheetState extends State<_FilterSheet> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: _category == null ? AppColors.accent : Colors.transparent,
+                      color: _category == null ? AppColors.primary : Colors.transparent,
                       borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: _category == null ? AppColors.accent : borderColor),
+                      border: Border.all(color: _category == null ? AppColors.primary : borderColor),
                     ),
                     child: Text('All', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _category == null ? Colors.white : null)),
                   ),
@@ -316,9 +316,9 @@ class _FilterSheetState extends State<_FilterSheet> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: active ? AppColors.accent : Colors.transparent,
+                        color: active ? AppColors.primary : Colors.transparent,
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: active ? AppColors.accent : borderColor),
+                        border: Border.all(color: active ? AppColors.primary : borderColor),
                       ),
                       child: Text(c, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: active ? Colors.white : null)),
                     ),
@@ -460,7 +460,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     return Scaffold(
       backgroundColor: t.scaffoldBackgroundColor,
       body: RefreshIndicator(
-        color: AppColors.accent,
+        color: AppColors.primary,
         onRefresh: () => _load(reset: true),
         child: CustomScrollView(
           slivers: [
@@ -484,7 +484,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     ),
                     icon: const Icon(Icons.gavel_rounded, size: 16),
                     label: const Text('My Bids'),
-                    style: TextButton.styleFrom(foregroundColor: AppColors.accent),
+                    style: TextButton.styleFrom(foregroundColor: AppColors.primary),
                   ),
                 if (_isBusiness)
                   TextButton.icon(
@@ -494,7 +494,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     ),
                     icon: const Icon(Icons.list_alt_rounded, size: 16),
                     label: const Text('My Listings'),
-                    style: TextButton.styleFrom(foregroundColor: AppColors.accent),
+                    style: TextButton.styleFrom(foregroundColor: AppColors.primary),
                   ),
                 const SizedBox(width: 4),
               ],
@@ -522,12 +522,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       Container(
                         decoration: BoxDecoration(
                           color: (_sort != 'NEWEST' || _category != null)
-                              ? AppColors.accent
+                              ? AppColors.primary
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: (_sort != 'NEWEST' || _category != null)
-                                ? AppColors.accent
+                                ? AppColors.primary
                                 : t.dividerColor,
                           ),
                         ),
@@ -552,7 +552,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             // ── Content ──────────────────────────────────────────
             if (_loading)
               const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator(color: AppColors.accent)),
+                child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
               )
             else if (_error != null)
               SliverFillRemaining(
@@ -619,7 +619,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       if (_loadingMore) {
                         return const Padding(
                           padding: EdgeInsets.all(20),
-                          child: Center(child: CircularProgressIndicator(color: AppColors.accent, strokeWidth: 2)),
+                          child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
                         );
                       }
                       return Padding(
@@ -655,7 +655,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const PostTaskScreen()),
               ).then((_) => _load(reset: true)),
-              backgroundColor: AppColors.accent,
+              backgroundColor: AppColors.primary,
               icon: const Icon(Icons.add_rounded, color: Colors.white),
               label: const Text('Post task', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
             )

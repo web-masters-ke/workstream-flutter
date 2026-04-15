@@ -56,11 +56,11 @@ class ProfileScreen extends StatelessWidget {
                       CircleAvatar(
                         radius: 42,
                         backgroundColor:
-                            AppColors.accent.withValues(alpha: 0.18),
+                            AppColors.primary.withValues(alpha: 0.18),
                         child: Text(
                           user?.initials ?? 'DA',
                           style: const TextStyle(
-                            color: AppColors.accent,
+                            color: AppColors.primary,
                             fontWeight: FontWeight.w800,
                             fontSize: 22,
                           ),
@@ -73,7 +73,7 @@ class ProfileScreen extends StatelessWidget {
                           width: 28,
                           height: 28,
                           decoration: const BoxDecoration(
-                            color: AppColors.accent,
+                            color: AppColors.primary,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.camera_alt,
@@ -126,7 +126,7 @@ class ProfileScreen extends StatelessWidget {
                   icon: Icons.task_alt_rounded,
                   label: 'Done',
                   value: '${user?.tasksCompleted ?? 0}',
-                  color: AppColors.accent,
+                  color: AppColors.primary,
                 ),
               ),
               const SizedBox(width: 10),
@@ -269,14 +269,14 @@ class _SkillChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.accent.withValues(alpha: 0.10),
+        color: AppColors.primary.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.accent.withValues(alpha: 0.30)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.30)),
       ),
       child: Text(
         label,
         style: const TextStyle(
-          color: AppColors.accent,
+          color: AppColors.primary,
           fontWeight: FontWeight.w600,
           fontSize: 12,
         ),

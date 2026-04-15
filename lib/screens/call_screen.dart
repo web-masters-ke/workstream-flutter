@@ -206,10 +206,10 @@ class _CallScreenState extends State<CallScreen> {
                   TextButton.icon(
                     onPressed: _openAgain,
                     icon: const Icon(Icons.open_in_new_rounded,
-                        color: AppColors.accent),
+                        color: AppColors.primary),
                     label: const Text(
                       'Re-open meeting',
-                      style: TextStyle(color: AppColors.accent),
+                      style: TextStyle(color: AppColors.primary),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -222,10 +222,10 @@ class _CallScreenState extends State<CallScreen> {
                   TextButton.icon(
                     onPressed: _start,
                     icon: const Icon(Icons.refresh_rounded,
-                        color: AppColors.accent),
+                        color: AppColors.primary),
                     label: const Text(
                       'Retry',
-                      style: TextStyle(color: AppColors.accent),
+                      style: TextStyle(color: AppColors.primary),
                     ),
                   ),
                   const SizedBox(height: 16),

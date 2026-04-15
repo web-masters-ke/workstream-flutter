@@ -188,7 +188,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     )
                   : const Text('Save',
                       style: TextStyle(
-                          color: AppColors.accent,
+                          color: AppColors.primary,
                           fontWeight: FontWeight.w700)),
             ),
           ],
@@ -208,7 +208,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         CircleAvatar(
                           radius: 48,
                           backgroundColor:
-                              AppColors.accent.withValues(alpha: 0.18),
+                              AppColors.primary.withValues(alpha: 0.18),
                           backgroundImage: _pickedAvatar != null
                               ? FileImage(File(_pickedAvatar!.path))
                               : null,
@@ -216,7 +216,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ? Text(
                                   user?.initials ?? 'WS',
                                   style: const TextStyle(
-                                    color: AppColors.accent,
+                                    color: AppColors.primary,
                                     fontWeight: FontWeight.w800,
                                     fontSize: 24,
                                   ),
@@ -230,7 +230,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             width: 30,
                             height: 30,
                             decoration: const BoxDecoration(
-                              color: AppColors.accent,
+                              color: AppColors.primary,
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(Icons.camera_alt,
@@ -432,8 +432,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 const SizedBox(width: 8),
                                 Switch.adaptive(
                                   value: _availDays[i],
-                                  activeThumbColor: AppColors.accent,
-                                  activeTrackColor: AppColors.accent
+                                  activeThumbColor: AppColors.primary,
+                                  activeTrackColor: AppColors.primary
                                       .withValues(alpha: 0.4),
                                   onChanged: (v) => setState(() {
                                     _availDays[i] = v;
@@ -547,13 +547,13 @@ class _SkillChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.accent.withValues(alpha: 0.10),
+        color: AppColors.primary.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.accent.withValues(alpha: 0.30)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.30)),
       ),
       child: Text(label,
           style: const TextStyle(
-              color: AppColors.accent,
+              color: AppColors.primary,
               fontWeight: FontWeight.w600,
               fontSize: 12)),
     );
@@ -575,13 +575,13 @@ class _TimeChip extends StatelessWidget {
         padding:
             const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: AppColors.accent.withValues(alpha: 0.12),
+          color: AppColors.primary.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           time.format(context),
           style: const TextStyle(
-              color: AppColors.accent,
+              color: AppColors.primary,
               fontWeight: FontWeight.w600,
               fontSize: 12),
         ),

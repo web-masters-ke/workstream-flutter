@@ -40,15 +40,15 @@ class BillingScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.accent.withValues(alpha: 0.2),
+                        color: AppColors.primary.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
-                            color: AppColors.accent.withValues(alpha: 0.4)),
+                            color: AppColors.primary.withValues(alpha: 0.4)),
                       ),
                       child: const Text(
                         'CURRENT PLAN',
                         style: TextStyle(
-                          color: AppColors.accent,
+                          color: AppColors.primary,
                           fontWeight: FontWeight.w700,
                           fontSize: 11,
                           letterSpacing: 0.8,
@@ -90,7 +90,7 @@ class BillingScreen extends StatelessWidget {
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accent,
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -196,7 +196,7 @@ class BillingScreen extends StatelessWidget {
   Widget _planFeature(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, color: AppColors.accent, size: 16),
+        Icon(icon, color: AppColors.primary, size: 16),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -221,17 +221,17 @@ class BillingScreen extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: 0.12),
+              color: AppColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: AppColors.accent, size: 18),
+            child: Icon(icon, color: AppColors.primary, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(text,
                 style: const TextStyle(fontWeight: FontWeight.w500)),
           ),
-          const Icon(Icons.lock_rounded, size: 16, color: AppColors.accent),
+          const Icon(Icons.lock_rounded, size: 16, color: AppColors.primary),
         ],
       ),
     );

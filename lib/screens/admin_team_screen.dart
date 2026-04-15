@@ -136,9 +136,9 @@ class _AdminTeamScreenState extends State<AdminTeamScreen> {
             padding: const EdgeInsets.only(right: 8),
             child: Chip(
               label: Text('${_agents.length}'),
-              backgroundColor: AppColors.accent.withValues(alpha: 0.12),
+              backgroundColor: AppColors.primary.withValues(alpha: 0.12),
               labelStyle: const TextStyle(
-                  color: AppColors.accent, fontWeight: FontWeight.w700),
+                  color: AppColors.primary, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -231,7 +231,7 @@ class _AgentTile extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: AppColors.accent.withValues(alpha: 0.18),
+            backgroundColor: AppColors.primary.withValues(alpha: 0.18),
             backgroundImage: agent.avatarUrl != null
                 ? NetworkImage(agent.avatarUrl!)
                 : null,
@@ -239,7 +239,7 @@ class _AgentTile extends StatelessWidget {
                 ? Text(
                     agent.initials,
                     style: const TextStyle(
-                      color: AppColors.accent,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w700,
                     ),
                   )

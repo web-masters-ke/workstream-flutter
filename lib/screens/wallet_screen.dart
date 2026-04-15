@@ -46,7 +46,7 @@ class _WalletScreenState extends State<WalletScreen> {
     return ChoiceChip(
       label: Text(label),
       selected: active,
-      selectedColor: AppColors.accent.withValues(alpha: 0.18),
+      selectedColor: AppColors.primary.withValues(alpha: 0.18),
       onSelected: (_) => setState(() => _txFilter = value),
     );
   }
@@ -191,7 +191,7 @@ class _WalletScreenState extends State<WalletScreen> {
                       Expanded(
                         child: FilledButton.icon(
                           style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.accent,
+                            backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
                           ),
                           onPressed: () {

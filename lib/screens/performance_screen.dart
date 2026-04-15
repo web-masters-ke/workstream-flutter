@@ -104,7 +104,7 @@ class _PerformanceScreenState extends State<PerformanceScreen> {
                     icon: Icons.task_alt_rounded,
                     label: 'Completed',
                     value: '${d.totalTasks}',
-                    color: AppColors.accent,
+                    color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -126,7 +126,7 @@ class _PerformanceScreenState extends State<PerformanceScreen> {
                     icon: Icons.av_timer_rounded,
                     label: 'On-time',
                     value: '${d.onTimeRate}%',
-                    color: AppColors.accent,
+                    color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -190,7 +190,7 @@ class _PerformanceScreenState extends State<PerformanceScreen> {
                               gradient: const LinearGradient(
                                 begin: Alignment.bottomCenter,
                                 end: Alignment.topCenter,
-                                colors: [AppColors.accent, AppColors.accentDeep],
+                                colors: [AppColors.primary, AppColors.primaryDeep],
                               ),
                             ),
                           ]);
@@ -258,7 +258,7 @@ class _PerformanceScreenState extends State<PerformanceScreen> {
             const SectionHeader(title: 'Rating breakdown'),
             const SizedBox(height: 10),
             _RatingBar(label: '5 stars', pct: 0.68, color: AppColors.success),
-            _RatingBar(label: '4 stars', pct: 0.22, color: AppColors.accent),
+            _RatingBar(label: '4 stars', pct: 0.22, color: AppColors.primary),
             _RatingBar(label: '3 stars', pct: 0.07, color: AppColors.warn),
             _RatingBar(label: '2 stars', pct: 0.02, color: AppColors.warn),
             _RatingBar(label: '1 star', pct: 0.01, color: AppColors.danger),
@@ -377,7 +377,7 @@ class _QaTile extends StatelessWidget {
         : AppColors.lightSubtext;
     final color = score >= 95
         ? AppColors.success
-        : (score >= 85 ? AppColors.accent : AppColors.warn);
+        : (score >= 85 ? AppColors.primary : AppColors.warn);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),

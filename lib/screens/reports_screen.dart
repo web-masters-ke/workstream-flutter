@@ -64,7 +64,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(
-                  color: AppColors.accent, strokeWidth: 2.5),
+                  color: AppColors.primary, strokeWidth: 2.5),
             )
           : RefreshIndicator(
               onRefresh: _load,
@@ -97,7 +97,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 icon: Icons.assignment_rounded,
                 label: 'Total tasks',
                 value: '${d.totalTasks}',
-                color: AppColors.accent,
+                color: AppColors.primary,
               ),
             ),
             const SizedBox(width: 10),
@@ -199,7 +199,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 gradient: const LinearGradient(
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
-                  colors: [AppColors.accent, AppColors.accentDeep],
+                  colors: [AppColors.primary, AppColors.primaryDeep],
                 ),
               ),
             ]);

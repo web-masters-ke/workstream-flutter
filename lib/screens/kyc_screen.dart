@@ -123,16 +123,16 @@ class _KycScreenState extends State<KycScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.accent.withValues(alpha: 0.10),
+                  color: AppColors.primary.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: AppColors.accent.withValues(alpha: 0.25),
+                    color: AppColors.primary.withValues(alpha: 0.25),
                   ),
                 ),
                 child: Row(
                   children: [
                     const Icon(Icons.shield_outlined,
-                        color: AppColors.accent, size: 26),
+                        color: AppColors.primary, size: 26),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -268,7 +268,7 @@ class _KycTile extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: (done ? AppColors.success : AppColors.accent)
+                color: (done ? AppColors.success : AppColors.primary)
                     .withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -276,7 +276,7 @@ class _KycTile extends StatelessWidget {
                 done
                     ? Icons.check_circle_rounded
                     : Icons.camera_alt_outlined,
-                color: done ? AppColors.success : AppColors.accent,
+                color: done ? AppColors.success : AppColors.primary,
               ),
             ),
             const SizedBox(width: 12),

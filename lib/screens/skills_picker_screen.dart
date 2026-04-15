@@ -116,7 +116,7 @@ class _SkillsPickerScreenState extends State<SkillsPickerScreen> {
                           onDeleted: () =>
                               setState(() => _selected.remove(s)),
                           backgroundColor:
-                              AppColors.accent.withValues(alpha: 0.12),
+                              AppColors.primary.withValues(alpha: 0.12),
                           materialTapTargetSize:
                               MaterialTapTargetSize.shrinkWrap,
                           visualDensity: VisualDensity.compact,
@@ -143,7 +143,7 @@ class _SkillsPickerScreenState extends State<SkillsPickerScreen> {
                     });
                   },
                   title: Text(skill),
-                  activeColor: AppColors.accent,
+                  activeColor: AppColors.primary,
                   dense: true,
                   controlAffinity: ListTileControlAffinity.leading,
                   secondary: Icon(
@@ -151,7 +151,7 @@ class _SkillsPickerScreenState extends State<SkillsPickerScreen> {
                         ? Icons.check_circle_rounded
                         : Icons.circle_outlined,
                     size: 20,
-                    color: active ? AppColors.accent : t.dividerColor,
+                    color: active ? AppColors.primary : t.dividerColor,
                   ),
                 );
               },

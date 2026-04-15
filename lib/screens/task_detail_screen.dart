@@ -78,7 +78,7 @@ class TaskDetailScreen extends StatelessWidget {
             children: [
               StatusPill(
                 label: task.category.label,
-                color: AppColors.accent,
+                color: AppColors.primary,
                 icon: Icons.local_offer_rounded,
               ),
               const SizedBox(width: 8),
@@ -268,7 +268,7 @@ class TaskDetailScreen extends StatelessWidget {
   }
 
   Color _statusColor(TaskStatus s) => switch (s) {
-        TaskStatus.available => AppColors.accent,
+        TaskStatus.available => AppColors.primary,
         TaskStatus.assigned => AppColors.warn,
         TaskStatus.inProgress => AppColors.primary,
         TaskStatus.submitted => AppColors.warn,
