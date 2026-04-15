@@ -237,6 +237,22 @@ class _BillingScreenState extends State<BillingScreen> {
     );
   }
 
+  void _showPayoutSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _PayoutSheet(
+        available: _wallet.available,
+        currency: _wallet.currency,
+        onComplete: _load,
+      ),
+    );
+  }
+
   Future<void> _saveAutoRecharge() async {
     try {
       await ApiService.instance.patch('/wallet/auto-recharge', body: {
@@ -284,6 +300,12 @@ class _BillingScreenState extends State<BillingScreen> {
       appBar: AppBar(
         title: const Text('Billing & Subscriptions'),
         actions: [
+          TextButton.icon(
+            onPressed: _showPayoutSheet,
+            icon: const Icon(Icons.arrow_upward_rounded, size: 18),
+            label: const Text('Payout'),
+            style: TextButton.styleFrom(foregroundColor: AppColors.success),
+          ),
           TextButton.icon(
             onPressed: _showTopUpSheet,
             icon: const Icon(Icons.add_rounded, size: 18),
@@ -1223,6 +1245,186 @@ class _TopUpSheetState extends State<_TopUpSheet> {
           child: const Text('Done'),
         ),
       ],
+    );
+  }
+}
+
+// ─── Payout Sheet ────────────────────────────────────────────────────────────
+
+class _PayoutSheet extends StatefulWidget {
+  final double available;
+  final String currency;
+  final VoidCallback onComplete;
+
+  const _PayoutSheet({
+    required this.available,
+    required this.currency,
+    required this.onComplete,
+  });
+
+  @override
+  State<_PayoutSheet> createState() => _PayoutSheetState();
+}
+
+class _PayoutSheetState extends State<_PayoutSheet> {
+  final _amountCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController(text: '+254 ');
+  bool _busy = false;
+  bool _success = false;
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid amount')),
+      );
+      return;
+    }
+    if (amount > widget.available) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Insufficient balance. Available: ${widget.currency} ${widget.available.toStringAsFixed(0)}')),
+      );
+      return;
+    }
+    if (_phoneCtrl.text.trim().length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid M-Pesa phone number')),
+      );
+      return;
+    }
+
+    setState(() => _busy = true);
+    try {
+      await ApiService.instance.post('/wallet/payout', body: {
+        'amountCents': (amount * 100).round(),
+        'phone': _phoneCtrl.text.trim(),
+        'method': 'MPESA',
+      });
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _success = true;
+      });
+      widget.onComplete();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(cleanError(e)),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final subtext = t.brightness == Brightness.dark
+        ? AppColors.darkSubtext
+        : AppColors.lightSubtext;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        20, 16, 20,
+        20 + MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: t.dividerColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            if (_success) ...[
+              const SizedBox(height: 20),
+              Center(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 60, height: 60,
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check_rounded, color: AppColors.success, size: 32),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Payout initiated', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                    const SizedBox(height: 6),
+                    Text('Funds will arrive in your M-Pesa shortly.', style: TextStyle(color: subtext, fontSize: 13)),
+                    const SizedBox(height: 20),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Done'),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              Text('Withdraw funds',
+                  style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(
+                'Available: ${widget.currency} ${widget.available.toStringAsFixed(0)}',
+                style: TextStyle(color: subtext, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+
+              // Amount
+              WsTextField(
+                controller: _amountCtrl,
+                label: 'Amount (${widget.currency})',
+                hint: 'e.g. 1000',
+                icon: Icons.payments_outlined,
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 14),
+
+              // Phone
+              WsTextField(
+                controller: _phoneCtrl,
+                label: 'M-Pesa phone number',
+                hint: '+254 7XX XXX XXX',
+                icon: Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 20),
+
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _busy ? null : _submit,
+                  style: FilledButton.styleFrom(backgroundColor: AppColors.success),
+                  child: _busy
+                      ? const SizedBox(
+                          height: 20, width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                        )
+                      : const Text('Withdraw to M-Pesa'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
