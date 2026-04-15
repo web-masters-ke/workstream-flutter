@@ -56,15 +56,49 @@ class _Task {
     }
 
     String? agentName;
-    if (j['agent'] is Map) {
+    // Try to extract agent from assignments array first
+    final assignments = j['assignments'];
+    if (assignments is List && assignments.isNotEmpty) {
+      Map<String, dynamic>? accepted;
+      for (final a in assignments) {
+        if (a is Map<String, dynamic> && a['status'] == 'ACCEPTED') {
+          accepted = a;
+          break;
+        }
+      }
+      accepted ??= assignments.last is Map<String, dynamic>
+          ? assignments.last as Map<String, dynamic>
+          : null;
+      if (accepted != null) {
+        final agentNode = accepted['agent'];
+        if (agentNode is Map) {
+          final userNode = agentNode['user'];
+          if (userNode is Map) {
+            agentName = userNode['name']?.toString();
+            if (agentName == null || agentName.isEmpty) {
+              final fn = userNode['firstName']?.toString() ?? '';
+              final ln = userNode['lastName']?.toString() ?? '';
+              agentName = '$fn $ln'.trim();
+            }
+          }
+          if (agentName == null || agentName.isEmpty) {
+            final fn = agentNode['firstName']?.toString() ?? '';
+            final ln = agentNode['lastName']?.toString() ?? '';
+            agentName = '$fn $ln'.trim();
+          }
+        }
+      }
+      if (agentName != null && agentName.isEmpty) agentName = null;
+    }
+    // Fallback to flat agent map
+    if (agentName == null && j['agent'] is Map) {
       final a = j['agent'] as Map;
       final fn = a['firstName']?.toString() ?? '';
       final ln = a['lastName']?.toString() ?? '';
       agentName = '$fn $ln'.trim();
       if (agentName.isEmpty) agentName = null;
-    } else if (j['agentName'] != null) {
-      agentName = j['agentName'].toString();
     }
+    agentName ??= j['agentName']?.toString();
 
     return _Task(
       id: j['id']?.toString() ?? '',
@@ -516,6 +550,19 @@ class _AdminCreateTaskSheetState extends State<_AdminCreateTaskSheet> {
       }
       if (list.isNotEmpty && list.first is Map) {
         if (mounted) setState(() => _businessId = (list.first as Map)['id']?.toString());
+        return;
+      }
+    } catch (_) {}
+    // Fallback: try to get business from user profile
+    try {
+      final resp = await ApiService.instance.get('/auth/me');
+      final data = unwrap<dynamic>(resp);
+      if (data is Map) {
+        final bId = data['businessId']?.toString() ??
+            (data['business'] is Map ? (data['business'] as Map)['id']?.toString() : null);
+        if (bId != null && bId.isNotEmpty && mounted) {
+          setState(() => _businessId = bId);
+        }
       }
     } catch (_) {}
   }
@@ -611,8 +658,25 @@ class _AdminCreateTaskSheetState extends State<_AdminCreateTaskSheet> {
       };
       if (_businessId != null) body['businessId'] = _businessId;
       if (_dueAt != null) body['dueAt'] = _dueAt!.toIso8601String();
-      if (_selectedAgentId != null) body['assignedAgentId'] = _selectedAgentId;
-      await ApiService.instance.post('/tasks', body: body);
+      // Do NOT send assignedAgentId at creation time — assign separately
+      final resp = await ApiService.instance.post('/tasks', body: body);
+
+      // If an agent was selected, assign after creation
+      if (_selectedAgentId != null) {
+        try {
+          final taskData = unwrap<dynamic>(resp);
+          final newTaskId = taskData is Map ? taskData['id']?.toString() : null;
+          if (newTaskId != null && newTaskId.isNotEmpty) {
+            await ApiService.instance.post(
+              '/tasks/$newTaskId/assign',
+              body: {'agentId': _selectedAgentId},
+            );
+          }
+        } catch (_) {
+          // Assignment failed but task was created — that's OK
+        }
+      }
+
       if (!mounted) return;
       Navigator.pop(context, true);
       ScaffoldMessenger.of(context).showSnackBar(

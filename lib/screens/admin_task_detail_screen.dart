@@ -83,6 +83,76 @@ String _agentNameFromMap(Map<String, dynamic>? agent) {
   return agent['name']?.toString() ?? agent['email']?.toString() ?? 'Agent';
 }
 
+/// Extract the assigned agent name from the task's `assignments` array.
+/// Falls back to the flat `agent` map if `assignments` is empty.
+String _agentNameFromTask(Map<String, dynamic> task) {
+  final assignments = task['assignments'];
+  if (assignments is List && assignments.isNotEmpty) {
+    // Prefer the accepted assignment, otherwise take the latest
+    Map<String, dynamic>? accepted;
+    for (final a in assignments) {
+      if (a is Map<String, dynamic> && a['status'] == 'ACCEPTED') {
+        accepted = a;
+        break;
+      }
+    }
+    accepted ??= assignments.last is Map<String, dynamic>
+        ? assignments.last as Map<String, dynamic>
+        : null;
+    if (accepted != null) {
+      final agentNode = accepted['agent'];
+      if (agentNode is Map<String, dynamic>) {
+        final userNode = agentNode['user'];
+        if (userNode is Map<String, dynamic>) {
+          final name = userNode['name']?.toString();
+          if (name != null && name.isNotEmpty) return name;
+          final fn = userNode['firstName']?.toString() ?? '';
+          final ln = userNode['lastName']?.toString() ?? '';
+          final full = '$fn $ln'.trim();
+          if (full.isNotEmpty) return full;
+        }
+        return _agentNameFromMap(agentNode);
+      }
+    }
+  }
+  // Fallback to flat agent map
+  final agent = task['agent'] is Map
+      ? task['agent'] as Map<String, dynamic>
+      : null;
+  return _agentNameFromMap(agent);
+}
+
+/// Extract the agent email from the task's `assignments` array.
+String? _agentEmailFromTask(Map<String, dynamic> task) {
+  final assignments = task['assignments'];
+  if (assignments is List && assignments.isNotEmpty) {
+    Map<String, dynamic>? accepted;
+    for (final a in assignments) {
+      if (a is Map<String, dynamic> && a['status'] == 'ACCEPTED') {
+        accepted = a;
+        break;
+      }
+    }
+    accepted ??= assignments.last is Map<String, dynamic>
+        ? assignments.last as Map<String, dynamic>
+        : null;
+    if (accepted != null) {
+      final agentNode = accepted['agent'];
+      if (agentNode is Map<String, dynamic>) {
+        final userNode = agentNode['user'];
+        if (userNode is Map<String, dynamic>) {
+          return userNode['email']?.toString();
+        }
+        return agentNode['email']?.toString();
+      }
+    }
+  }
+  final agent = task['agent'] is Map
+      ? task['agent'] as Map<String, dynamic>
+      : null;
+  return agent?['email']?.toString();
+}
+
 List<dynamic> _extractList(dynamic data, [String? key]) {
   if (data is List) return data;
   if (data is Map) {
@@ -137,7 +207,7 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
             .get('/tasks/${widget.taskId}/submissions')
             .catchError((_) => <String, dynamic>{'success': true, 'data': []}),
         ApiService.instance
-            .get('/tasks/${widget.taskId}/activity')
+            .get('/tasks/${widget.taskId}/history')
             .catchError((_) => <String, dynamic>{'success': true, 'data': []}),
       ]);
 
@@ -493,9 +563,7 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
   Widget _buildDetailsCard(
       Map<String, dynamic> task, ThemeData t, Color subtext) {
     final sla = task['slaMinutes'];
-    final agent = task['agent'] is Map
-        ? task['agent'] as Map<String, dynamic>
-        : null;
+    final agentName = _agentNameFromTask(task);
     final skill = task['skill']?.toString() ??
         task['category']?.toString() ??
         '';
@@ -531,7 +599,7 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
               Expanded(
                 child: _detailItem(
                   'Agent',
-                  _agentNameFromMap(agent),
+                  agentName,
                   subtext,
                 ),
               ),
@@ -631,10 +699,8 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
 
   Widget _buildAgentSection(
       Map<String, dynamic> task, ThemeData t, Color subtext) {
-    final agent = task['agent'] is Map
-        ? task['agent'] as Map<String, dynamic>
-        : null;
-    final agentName = _agentNameFromMap(agent);
+    final agentName = _agentNameFromTask(task);
+    final agentEmail = _agentEmailFromTask(task);
     final initial = agentName.isNotEmpty ? agentName[0].toUpperCase() : '?';
 
     return Container(
@@ -668,9 +734,9 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
                   style: const TextStyle(
                       fontWeight: FontWeight.w700, fontSize: 14),
                 ),
-                if (agent != null && agent['email'] != null)
+                if (agentEmail != null)
                   Text(
-                    agent['email'].toString(),
+                    agentEmail,
                     style: TextStyle(color: subtext, fontSize: 12),
                   ),
               ],

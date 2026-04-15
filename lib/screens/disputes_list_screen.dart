@@ -122,12 +122,16 @@ class _DisputesListScreenState extends State<DisputesListScreen> {
       _error = null;
     });
     try {
-      // Try /escalations first, fallback to /disputes
+      // Try /admin/disputes first, then /escalations, then /tasks?status=ON_HOLD
       Map<String, dynamic> resp;
       try {
-        resp = await ApiService.instance.get('/escalations');
+        resp = await ApiService.instance.get('/admin/disputes');
       } catch (_) {
-        resp = await ApiService.instance.get('/disputes');
+        try {
+          resp = await ApiService.instance.get('/escalations');
+        } catch (_) {
+          resp = await ApiService.instance.get('/tasks', query: {'status': 'ON_HOLD'});
+        }
       }
       final raw = unwrap<dynamic>(resp);
       List<dynamic> list;

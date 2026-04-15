@@ -164,9 +164,9 @@ class _WorkspacesScreenState extends State<WorkspacesScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Archive workspace'),
+        title: const Text('Delete workspace'),
         content: const Text(
-            'This workspace will be archived. You can restore it later from the admin panel.'),
+            'This workspace will be permanently deleted. This action cannot be undone.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -176,18 +176,17 @@ class _WorkspacesScreenState extends State<WorkspacesScreen> {
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.danger,
             ),
-            child: const Text('Archive'),
+            child: const Text('Delete'),
           ),
         ],
       ),
     );
     if (confirmed != true) return;
     try {
-      await ApiService.instance
-          .patch('/workspaces/$id', body: {'status': 'ARCHIVED'});
+      await ApiService.instance.delete('/workspaces/$id');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Workspace archived')),
+          const SnackBar(content: Text('Workspace deleted')),
         );
       }
       await _load();

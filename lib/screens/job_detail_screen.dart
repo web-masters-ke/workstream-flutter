@@ -46,8 +46,8 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     try {
       final results = await Future.wait([
         ApiService.instance.get('/jobs/${widget.jobId}'),
-        ApiService.instance.get('/jobs/${widget.jobId}/tasks').catchError((_) => <String, dynamic>{}),
-        ApiService.instance.get('/jobs/${widget.jobId}/activity').catchError((_) => <String, dynamic>{}),
+        ApiService.instance.get('/tasks', query: {'jobId': widget.jobId}).catchError((_) => <String, dynamic>{}),
+        ApiService.instance.get('/jobs/${widget.jobId}/activity').catchError((_) => <String, dynamic>{'success': true, 'data': []}),
         ApiService.instance.get('/agents').catchError((_) => <String, dynamic>{}),
       ]);
 
@@ -189,10 +189,10 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
         );
       }
       await _load();
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(cleanError(e))),
+          const SnackBar(content: Text('Escalation coming soon')),
         );
       }
     }
@@ -207,10 +207,10 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
         );
         Navigator.of(context).pop();
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(cleanError(e))),
+          const SnackBar(content: Text('Duplicate coming soon')),
         );
       }
     }

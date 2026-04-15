@@ -478,7 +478,7 @@ class _ApiKeysTabState extends State<_ApiKeysTab> {
     });
     try {
       final resp = await ApiService.instance
-          .get('/api-keys/create', query: {'label': label});
+          .post('/api-keys', body: {'label': label});
       final data = unwrap<Map<String, dynamic>>(resp);
       final key = data['key']?.toString() ?? data['apiKey']?.toString() ?? '';
       setState(() {

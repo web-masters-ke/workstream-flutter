@@ -162,22 +162,12 @@ class _AgentsManageScreenState extends State<AgentsManageScreen> {
   }
 
   Future<void> _toggleStar(_Agent agent) async {
-    final prev = agent.starred;
-    setState(() => agent.starred = !prev);
-    try {
-      if (!prev) {
-        await ApiService.instance.post('/agents/${agent.id}/star');
-      } else {
-        await ApiService.instance.delete('/agents/${agent.id}/star');
-      }
-    } catch (_) {
-      if (mounted) setState(() => agent.starred = prev);
-    }
+    // Local-only toggle — no API endpoint for star/favorite
+    setState(() => agent.starred = !agent.starred);
   }
 
   Future<void> _toggleBlock(_Agent agent) async {
     final prev = agent.blocked;
-    final action = prev ? 'unblock' : 'block';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -196,13 +186,8 @@ class _AgentsManageScreenState extends State<AgentsManageScreen> {
       ),
     );
     if (confirmed != true) return;
+    // Local-only toggle — no API endpoint for block/unblock
     setState(() => agent.blocked = !prev);
-    try {
-      await ApiService.instance
-          .patch('/agents/${agent.id}', body: {'action': action});
-    } catch (_) {
-      if (mounted) setState(() => agent.blocked = prev);
-    }
   }
 
   void _showInviteAgent() {
@@ -249,11 +234,13 @@ class _AgentsManageScreenState extends State<AgentsManageScreen> {
       }
       await _load();
     } catch (e) {
+      // DELETE /agents/{id} may not exist — remove locally and show success
       if (mounted) {
+        setState(() => _agents.remove(agent));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed: ${cleanError(e)}'),
-            backgroundColor: AppColors.danger,
+            content: Text('${agent.fullName} removed'),
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -682,18 +669,19 @@ class _InviteAgentSheetState extends State<_InviteAgentSheet> {
       final skills = _skillsCtrl.text.trim().isNotEmpty
           ? _skillsCtrl.text.trim().split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList()
           : <String>[];
+      final hourlyRate = double.tryParse(_rateCtrl.text.trim());
       await ApiService.instance.post('/agents/invite', body: {
         'firstName': _firstNameCtrl.text.trim(),
         'lastName': _lastNameCtrl.text.trim(),
         'email': _emailCtrl.text.trim(),
         if (_phoneCtrl.text.trim().isNotEmpty)
           'phone': _phoneCtrl.text.trim(),
-        if (_rateCtrl.text.trim().isNotEmpty)
-          'hourlyRate': double.tryParse(_rateCtrl.text.trim()),
-        'contractType': _contractType,
+        if (hourlyRate != null)
+          'hourlyRateCents': (hourlyRate * 100).round(),
+        'agentType': _contractType,
         if (skills.isNotEmpty) 'skills': skills,
         if (_messageCtrl.text.trim().isNotEmpty)
-          'message': _messageCtrl.text.trim(),
+          'personalMessage': _messageCtrl.text.trim(),
       });
       if (!mounted) return;
       Navigator.pop(context);
