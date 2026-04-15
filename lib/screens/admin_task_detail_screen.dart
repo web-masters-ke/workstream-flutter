@@ -194,10 +194,12 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
   Future<void> _patchTask(Map<String, dynamic> body,
       {String? successMsg}) async {
     try {
-      final resp = await ApiService.instance.patch(
-        '/tasks/${widget.taskId}',
-        body: body,
-      );
+      // Status changes go to /transition endpoint
+      final isStatusChange = body.containsKey('status') && body.length == 1;
+      final path = isStatusChange
+          ? '/tasks/${widget.taskId}/transition'
+          : '/tasks/${widget.taskId}';
+      final resp = await ApiService.instance.patch(path, body: body);
       final updated = unwrap<Map<String, dynamic>>(resp);
       if (!mounted) return;
       setState(() => _task = updated);
@@ -293,12 +295,33 @@ class _AdminTaskDetailScreenState extends State<AdminTaskDetailScreen> {
       ),
       builder: (_) => _ReassignAgentSheet(
         currentAgentId: _task?['assignedAgentId']?.toString(),
-        onPicked: (id, name) {
+        onPicked: (id, name) async {
           Navigator.pop(context);
-          _patchTask(
-            {'assignedAgentId': id},
-            successMsg: id != null ? 'Reassigned to $name' : 'Agent unassigned',
-          );
+          if (id == null) return;
+          try {
+            await ApiService.instance.post(
+              '/tasks/${widget.taskId}/assign',
+              body: {'agentId': id},
+            );
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Assigned to $name'),
+                backgroundColor: AppColors.success,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            _loadAll();
+          } catch (e) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(cleanError(e)),
+                backgroundColor: AppColors.danger,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         },
       ),
     );
