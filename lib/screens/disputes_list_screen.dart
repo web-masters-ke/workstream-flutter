@@ -936,19 +936,21 @@ class _RaiseEscalationSheetState
     try {
       await ApiService.instance
           .post('/tasks/$_selectedTaskId/escalate', body: {
-        'subject': _subjectCtrl.text.trim(),
-        'category': _category,
-        'priority': _priority,
-        if (_reasonCtrl.text.trim().isNotEmpty)
-          'reason': _reasonCtrl.text.trim(),
-        if (_impactCtrl.text.trim().isNotEmpty)
-          'businessImpact': _impactCtrl.text.trim(),
-        if (_evidenceCtrl.text.trim().isNotEmpty)
-          'evidence': _evidenceCtrl.text.trim(),
-        if (_hoursCtrl.text.trim().isNotEmpty)
-          'expectedResolutionHours':
-              int.tryParse(_hoursCtrl.text.trim()),
+        'reason': [
+          _subjectCtrl.text.trim(),
+          if (_reasonCtrl.text.trim().isNotEmpty) _reasonCtrl.text.trim(),
+          if (_impactCtrl.text.trim().isNotEmpty) 'Impact: ${_impactCtrl.text.trim()}',
+        ].join(' — '),
       });
+      // Also put the task ON_HOLD so it shows in escalation list
+      try {
+        await ApiService.instance.patch(
+          '/tasks/$_selectedTaskId/transition',
+          body: {'status': 'ON_HOLD'},
+        );
+      } catch (_) {
+        // Best effort — task might not support this transition
+      }
       if (!mounted) return;
       Navigator.pop(context);
       widget.onRaised();
