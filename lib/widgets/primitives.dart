@@ -192,6 +192,8 @@ class WsTextField extends StatelessWidget {
   final bool obscure;
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
+  final String? errorText;
+  final Widget? suffixIcon;
 
   const WsTextField({
     super.key,
@@ -202,6 +204,8 @@ class WsTextField extends StatelessWidget {
     this.obscure = false,
     this.keyboardType,
     this.validator,
+    this.errorText,
+    this.suffixIcon,
   });
 
   @override
@@ -220,10 +224,15 @@ class WsTextField extends StatelessWidget {
           controller: controller,
           obscureText: obscure,
           keyboardType: keyboardType,
-          validator: validator,
+          validator: validator ?? (errorText != null ? (_) => errorText : null),
+          autovalidateMode: errorText != null
+              ? AutovalidateMode.always
+              : AutovalidateMode.disabled,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: icon == null ? null : Icon(icon, size: 20),
+            suffixIcon: suffixIcon,
+            errorText: errorText,
           ),
         ),
       ],
