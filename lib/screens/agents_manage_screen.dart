@@ -645,10 +645,10 @@ class _InviteAgentSheetState extends State<_InviteAgentSheet> {
   final _rateCtrl = TextEditingController();
   final _skillsCtrl = TextEditingController();
   final _messageCtrl = TextEditingController();
-  String _contractType = 'FREELANCE';
+  String _contractType = 'FREELANCER';
   bool _busy = false;
 
-  static const _contractTypes = ['FREELANCE', 'PART_TIME', 'FULL_TIME'];
+  static const _contractTypes = ['FREELANCER', 'EMPLOYEE'];
 
   @override
   void dispose() {
