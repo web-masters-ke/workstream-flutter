@@ -413,14 +413,51 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.call_rounded),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => CallScreen(
-                  contactName: _resolvedTitle,
-                  threadId: widget.threadId,
-                ),
-              ),
-            ),
+            onPressed: () async {
+              // Create call and send meeting link to the chat
+              try {
+                final resp = await ApiService.instance.post(
+                  '/communication/calls',
+                  body: {
+                    'threadId': widget.threadId,
+                    'type': 'VIDEO',
+                  },
+                );
+                final data = unwrap<Map<String, dynamic>>(resp);
+                final meetingUrl = data['meetingUrl']?.toString() ??
+                    data['jitsiUrl']?.toString() ??
+                    data['url']?.toString() ?? '';
+
+                // Send the meeting link as a message so others can join
+                if (meetingUrl.isNotEmpty) {
+                  ApiService.instance.post(
+                    '/communication/conversations/${widget.threadId}/messages',
+                    body: {
+                      'body': '📞 Meeting started — tap to join:\n$meetingUrl',
+                      'type': 'TEXT',
+                    },
+                  ).catchError((_) => <String, dynamic>{});
+                }
+
+                if (!mounted) return;
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => CallScreen(
+                      contactName: _resolvedTitle,
+                      meetingUrl: meetingUrl.isNotEmpty ? meetingUrl : null,
+                    ),
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Could not start call: ${cleanError(e)}'),
+                    backgroundColor: AppColors.danger,
+                  ),
+                );
+              }
+            },
           ),
         ],
       ),
