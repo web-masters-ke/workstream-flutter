@@ -32,24 +32,22 @@ class ProfileScreen extends StatelessWidget {
     final phone = user?.phone ?? '';
     final role = user?.role ?? '';
 
-    return SafeArea(
-      top: false,
-      child: ListView(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Profile'),
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const EditProfileScreen()),
+            ),
+          ),
+        ],
+      ),
+      body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
         children: [
-          // ── Header row ───────────────────────────────────
-          Row(
-            children: [
-              Text('Profile', style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const EditProfileScreen()),
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 8),
           // ── Avatar + name ────────────────────────────────────
           Center(
