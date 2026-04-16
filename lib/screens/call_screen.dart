@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
@@ -1068,12 +1068,25 @@ class _CallScreenState extends State<CallScreen> {
   }
 
   Future<void> _launch() async {
+    final url = _resolvedUrl!;
+    // Open in Chrome Custom Tab (supports WebRTC, feels in-app)
+    final launched = await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.inAppBrowserView,
+    );
     if (!mounted) return;
-    setState(() => _state = _CallState.launched);
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+    if (launched) {
+      setState(() => _state = _CallState.launched);
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        setState(() => _seconds++);
+      });
+    } else {
+      // Fallback to external browser
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       if (!mounted) return;
-      setState(() => _seconds++);
-    });
+      setState(() => _state = _CallState.launched);
+    }
   }
 
   void _endCall() {
@@ -1089,38 +1102,7 @@ class _CallScreenState extends State<CallScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // If call is launched and we have a URL, show full-screen WebView
-    if (_state == _CallState.launched && _resolvedUrl != null) {
-      final controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setNavigationDelegate(NavigationDelegate(
-          onNavigationRequest: (req) => NavigationDecision.navigate,
-        ))
-        ..loadRequest(Uri.parse(_resolvedUrl!));
-
-      return Scaffold(
-        backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: Colors.black,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-            onPressed: _endCall,
-          ),
-          title: Text(
-            '${widget.contactName} · $_timeLabel',
-            style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.call_end_rounded, color: AppColors.danger),
-              tooltip: 'End call',
-              onPressed: _endCall,
-            ),
-          ],
-        ),
-        body: WebViewWidget(controller: controller),
-      );
-    }
+    // If call is launched, it's open in Chrome Custom Tab — show in-call UI
 
     return Scaffold(
       backgroundColor: AppColors.primaryDeep,
@@ -1204,7 +1186,21 @@ class _CallScreenState extends State<CallScreen> {
 
             // ── Action buttons ─────────────────────────────────
             if (_state == _CallState.launched)
-              _endBtn('End call')
+              Column(
+                children: [
+                  TextButton.icon(
+                    onPressed: () {
+                      if (_resolvedUrl != null) {
+                        launchUrl(Uri.parse(_resolvedUrl!), mode: LaunchMode.inAppBrowserView);
+                      }
+                    },
+                    icon: const Icon(Icons.open_in_new_rounded, color: AppColors.primary),
+                    label: const Text('Re-open meeting', style: TextStyle(color: AppColors.primary)),
+                  ),
+                  const SizedBox(height: 16),
+                  _endBtn('End call'),
+                ],
+              )
             else if (_state == _CallState.error)
               Column(
                 children: [
