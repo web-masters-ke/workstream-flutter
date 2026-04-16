@@ -647,6 +647,7 @@ class _InviteAgentSheetState extends State<_InviteAgentSheet> {
   final _messageCtrl = TextEditingController();
   String _contractType = 'FREELANCER';
   bool _busy = false;
+  String? _error;
 
   static const _contractTypes = ['FREELANCER', 'EMPLOYEE'];
 
@@ -694,15 +695,7 @@ class _InviteAgentSheetState extends State<_InviteAgentSheet> {
         ),
       );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed: ${cleanError(e)}'),
-            backgroundColor: AppColors.danger,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      if (mounted) setState(() => _error = cleanError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -811,17 +804,33 @@ class _InviteAgentSheetState extends State<_InviteAgentSheet> {
                   hintText: 'Welcome message...',
                 ),
               ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
+                ),
+              ],
               const SizedBox(height: 20),
-              FilledButton(
-                onPressed: _busy ? null : _submit,
-                child: _busy
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2.5, color: Colors.white),
-                      )
-                    : const Text('Send invitation'),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _busy ? null : () { setState(() => _error = null); _submit(); },
+                  child: _busy
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2.5, color: Colors.white),
+                        )
+                      : const Text('Send invitation'),
+                ),
               ),
             ],
           ),
