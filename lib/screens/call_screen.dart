@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
@@ -1068,31 +1068,17 @@ class _CallScreenState extends State<CallScreen> {
   }
 
   Future<void> _launch() async {
-    final url = _resolvedUrl!;
-    final uri = Uri.parse(url);
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!mounted) return;
-    if (launched) {
-      setState(() => _state = _CallState.launched);
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (!mounted) return;
-        setState(() => _seconds++);
-      });
-    } else {
-      setState(() {
-        _state = _CallState.error;
-        _errorMsg = 'Could not open the meeting link. '
-            'Please install a browser and try again.';
-      });
-    }
+    setState(() => _state = _CallState.launched);
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _seconds++);
+    });
   }
 
-  Future<void> _openAgain() async {
-    if (_resolvedUrl == null) return;
-    await launchUrl(
-      Uri.parse(_resolvedUrl!),
-      mode: LaunchMode.externalApplication,
-    );
+  void _endCall() {
+    _timer?.cancel();
+    if (mounted) Navigator.pop(context);
   }
 
   String get _timeLabel {
@@ -1103,6 +1089,39 @@ class _CallScreenState extends State<CallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // If call is launched and we have a URL, show full-screen WebView
+    if (_state == _CallState.launched && _resolvedUrl != null) {
+      final controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setNavigationDelegate(NavigationDelegate(
+          onNavigationRequest: (req) => NavigationDecision.navigate,
+        ))
+        ..loadRequest(Uri.parse(_resolvedUrl!));
+
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: _endCall,
+          ),
+          title: Text(
+            '${widget.contactName} · $_timeLabel',
+            style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.call_end_rounded, color: AppColors.danger),
+              tooltip: 'End call',
+              onPressed: _endCall,
+            ),
+          ],
+        ),
+        body: WebViewWidget(controller: controller),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.primaryDeep,
       body: SafeArea(
@@ -1185,22 +1204,7 @@ class _CallScreenState extends State<CallScreen> {
 
             // ── Action buttons ─────────────────────────────────
             if (_state == _CallState.launched)
-              Column(
-                children: [
-                  // Re-open the meeting link
-                  TextButton.icon(
-                    onPressed: _openAgain,
-                    icon: const Icon(Icons.open_in_new_rounded,
-                        color: AppColors.primary),
-                    label: const Text(
-                      'Re-open meeting',
-                      style: TextStyle(color: AppColors.primary),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _endBtn('End call'),
-                ],
-              )
+              _endBtn('End call')
             else if (_state == _CallState.error)
               Column(
                 children: [
