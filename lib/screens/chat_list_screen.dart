@@ -282,14 +282,18 @@ class _MemberItem {
   }
 
   factory _MemberItem.fromJson(Map<String, dynamic> j) {
-    final first = j['firstName']?.toString() ?? '';
-    final last = j['lastName']?.toString() ?? '';
-    final name = '$first $last'.trim();
+    // Agent response has nested user object — extract userId for conversations
+    final user = j['user'] is Map ? j['user'] as Map<String, dynamic> : j;
+    final first = (user['firstName'] ?? j['firstName'])?.toString() ?? '';
+    final last = (user['lastName'] ?? j['lastName'])?.toString() ?? '';
+    final name = (user['name']?.toString() ?? '$first $last').trim();
+    // Use userId (not agentId) for conversation participants
+    final userId = (j['userId'] ?? user['id'] ?? j['id'])?.toString() ?? '';
     return _MemberItem(
-      id: j['id']?.toString() ?? '',
-      name: name.isEmpty ? (j['email']?.toString() ?? 'Unknown') : name,
-      email: j['email']?.toString() ?? '',
-      avatarUrl: j['avatarUrl']?.toString(),
+      id: userId,
+      name: name.isEmpty ? (user['email']?.toString() ?? j['email']?.toString() ?? 'Unknown') : name,
+      email: (user['email'] ?? j['email'])?.toString() ?? '',
+      avatarUrl: (user['avatarUrl'] ?? j['avatarUrl'])?.toString(),
     );
   }
 }
@@ -389,7 +393,7 @@ class _NewConversationSheetState extends State<_NewConversationSheet> {
     try {
       final type = _isGroup ? 'GROUP' : 'DIRECT';
       final body = <String, dynamic>{
-        'participantIds': _selectedIds.toList(),
+        'participantUserIds': _selectedIds.toList(),
         'type': type,
       };
       if (_isGroup) {
@@ -403,11 +407,7 @@ class _NewConversationSheetState extends State<_NewConversationSheet> {
       final thread = ChatThread.fromJson(data);
       widget.onCreated(thread);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(cleanError(e))),
-        );
-      }
+      if (mounted) setState(() => _error = cleanError(e));
     } finally {
       if (mounted) setState(() => _creating = false);
     }
@@ -629,6 +629,22 @@ class _NewConversationSheetState extends State<_NewConversationSheet> {
                             },
                           ),
           ),
+
+          // ── Error banner ──────────────────────────────────
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+                ),
+                child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 12)),
+              ),
+            ),
 
           // ── Create button ─────────────────────────────────
           SafeArea(
