@@ -32,7 +32,9 @@ class ProfileScreen extends StatelessWidget {
     final phone = user?.phone ?? '';
     final role = user?.role ?? '';
 
-    return ListView(
+    return SafeArea(
+      top: false,
+      child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
         children: [
           // ── Header row ───────────────────────────────────
@@ -343,6 +345,7 @@ class ProfileScreen extends StatelessWidget {
             },
           ),
         ],
+      ),
     );
   }
 }
