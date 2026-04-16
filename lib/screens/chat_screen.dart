@@ -241,9 +241,13 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            Text(widget.title,
-                style: const TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w700)),
+            Expanded(
+              child: Text(widget.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w700)),
+            ),
           ],
         ),
         actions: [
